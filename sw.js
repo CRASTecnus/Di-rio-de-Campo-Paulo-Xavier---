@@ -1,4 +1,4 @@
-const CACHE_NAME = 'caderno-psi-v4';
+const CACHE_NAME = 'caderno-psi-v5';
 const ASSETS = [
   './',
   './index.html',
