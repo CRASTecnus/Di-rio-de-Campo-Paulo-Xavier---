@@ -49,6 +49,62 @@ const LABELS_TIPO = { visita: 'Visita', pesquisa: 'Pesquisa', atividade: 'Ativid
 const LABELS_STATUS = { concluido: 'Concluído', acompanhamento: 'Acompanhamento pendente', planejado: 'Planejado' };
 
 // ------------------------------------------------------------
+// Geolocalização
+// ------------------------------------------------------------
+function capturarLocalizacao() {
+    const btn = document.getElementById('getLocationBtn');
+
+    if (!navigator.geolocation) {
+        alert('Seu navegador não suporta geolocalização.');
+        return;
+    }
+
+    const textoOriginal = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '…';
+
+    navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+            const { latitude, longitude } = pos.coords;
+            document.getElementById('entryLat').value = latitude;
+            document.getElementById('entryLng').value = longitude;
+
+            try {
+                const resp = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=17&addressdetails=1`
+                );
+                if (!resp.ok) throw new Error('Falha na resposta do serviço de endereço.');
+                const dados = await resp.json();
+                const campoLocal = document.getElementById('entryLocation');
+                if (dados && dados.display_name) {
+                    campoLocal.value = dados.display_name;
+                } else if (!campoLocal.value) {
+                    campoLocal.value = `Lat ${latitude.toFixed(5)}, Lng ${longitude.toFixed(5)}`;
+                }
+            } catch (err) {
+                console.error('Erro ao buscar endereço a partir das coordenadas:', err);
+                const campoLocal = document.getElementById('entryLocation');
+                if (!campoLocal.value) {
+                    campoLocal.value = `Lat ${latitude.toFixed(5)}, Lng ${longitude.toFixed(5)}`;
+                }
+            } finally {
+                btn.disabled = false;
+                btn.textContent = textoOriginal;
+            }
+        },
+        (err) => {
+            btn.disabled = false;
+            btn.textContent = textoOriginal;
+            let msg = 'Não foi possível obter sua localização.';
+            if (err.code === err.PERMISSION_DENIED) msg = 'Permissão de localização negada. Habilite o acesso à localização nas configurações do navegador.';
+            else if (err.code === err.TIMEOUT) msg = 'Tempo esgotado ao tentar obter a localização.';
+            alert(msg);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+}
+
+// ------------------------------------------------------------
 // Modal - abrir / fechar
 // ------------------------------------------------------------
 function abrirModal(id = null) {
@@ -73,12 +129,16 @@ function abrirModal(id = null) {
         document.getElementById('entryDetails').value = reg.entryDetails || '';
         document.getElementById('entryTags').value = reg.entryTags || '';
         document.getElementById('entryStatus').value = reg.entryStatus || 'concluido';
+        document.getElementById('entryLat').value = reg.entryLat ?? '';
+        document.getElementById('entryLng').value = reg.entryLng ?? '';
         deleteEntryBtn.style.display = 'inline-block';
     } else {
         modalTitle.textContent = 'Novo registro';
         entryForm.reset();
         document.getElementById('entryId').value = '';
         document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('entryLat').value = '';
+        document.getElementById('entryLng').value = '';
         deleteEntryBtn.style.display = 'none';
     }
 }
@@ -107,6 +167,8 @@ function salvarRegistro(e) {
         entryDetails: document.getElementById('entryDetails').value,
         entryTags: document.getElementById('entryTags').value.trim(),
         entryStatus: document.getElementById('entryStatus').value,
+        entryLat: document.getElementById('entryLat').value ? parseFloat(document.getElementById('entryLat').value) : null,
+        entryLng: document.getElementById('entryLng').value ? parseFloat(document.getElementById('entryLng').value) : null,
     };
 
     const idx = registros.findIndex(r => r.id === id);
@@ -175,6 +237,7 @@ function renderizar() {
             </div>
             <h3 class="entry-title">${escapeHtml(reg.entrySummary)}</h3>
             <p class="entry-meta">${escapeHtml(reg.entryLocation || '')}${reg.entryCode ? ' · ' + escapeHtml(reg.entryCode) : ''}</p>
+            ${(reg.entryLat && reg.entryLng) ? `<a href="https://www.google.com/maps?q=${reg.entryLat},${reg.entryLng}" target="_blank" rel="noopener" class="entry-map-link" onclick="event.stopPropagation()">Ver no mapa ↗</a>` : ''}
             ${reg.entryStatus === 'acompanhamento' ? '<span class="entry-status-flag">Acompanhamento pendente</span>' : ''}
         </div>
     `).join('');
@@ -224,19 +287,20 @@ function exportarWord() {
     const ordenados = [...registros].sort((a, b) => new Date(b.entryDate) - new Date(a.entryDate));
 
     let corpo = ordenados.map(reg => `
-        <div style="margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid #ccc;">
+        <div style="margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid #ccc; word-wrap:break-word;">
             <p style="font-size:11pt; color:#555; margin:0;">${formatarData(reg.entryDate)} — ${escapeHtml(LABELS_TIPO[reg.entryType] || reg.entryType)} — ${escapeHtml(LABELS_STATUS[reg.entryStatus] || reg.entryStatus)}</p>
-            <h2 style="margin:4px 0;">${escapeHtml(reg.entrySummary)}</h2>
+            <h2 style="margin:4px 0; word-wrap:break-word;">${escapeHtml(reg.entrySummary)}</h2>
             <p style="margin:2px 0;"><strong>Local/Instituição:</strong> ${escapeHtml(reg.entryLocation || '—')}</p>
             <p style="margin:2px 0;"><strong>Código do caso/sujeito:</strong> ${escapeHtml(reg.entryCode || '—')}</p>
             <p style="margin:2px 0;"><strong>Tags:</strong> ${escapeHtml(reg.entryTags || '—')}</p>
-            <p style="margin-top:8px; white-space:pre-wrap;">${escapeHtml(reg.entryDetails || '')}</p>
+            ${(reg.entryLat && reg.entryLng) ? `<p style="margin:2px 0; font-size:9pt;"><strong>Coordenadas:</strong> ${reg.entryLat}, ${reg.entryLng}</p>` : ''}
+            <p style="margin-top:8px; white-space:pre-wrap; word-wrap:break-word;">${escapeHtml(reg.entryDetails || '')}</p>
         </div>
     `).join('');
 
     const html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
         <head><meta charset="utf-8"><title>Caderno de Campo</title></head>
-        <body style="font-family: Calibri, Arial, sans-serif;">
+        <body style="font-family: Calibri, Arial, sans-serif; word-wrap:break-word;">
             <h1>Caderno de Campo — Paulo Xavier</h1>
             ${corpo}
         </body></html>`;
@@ -256,13 +320,46 @@ function exportarPDF() {
     const ordenados = [...registros].sort((a, b) => new Date(b.entryDate) - new Date(a.entryDate));
 
     let html = `<html><head><meta charset="utf-8"><style>
-        body { font-family: Arial, sans-serif; padding: 40px; color: #000; }
-        .folha { border: 1px solid #000; padding: 20px; margin-bottom: 20px; page-break-after: always; }
-        h1 { font-size: 18px; }
-        h2 { font-size: 15px; margin: 4px 0; }
+        @page { size: A4; margin: 18mm; }
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            max-width: 100%;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            color: #000;
+            overflow-wrap: break-word;
+            word-break: break-word;
+        }
+        .folha {
+            border: 1px solid #000;
+            padding: 16px;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 100%;
+            page-break-after: always;
+            page-break-inside: avoid;
+            overflow-wrap: break-word;
+            word-break: break-word;
+            hyphens: auto;
+        }
+        .folha:last-child { page-break-after: auto; }
+        h1 { font-size: 18px; overflow-wrap: break-word; }
+        h2 { font-size: 15px; margin: 4px 0; overflow-wrap: break-word; word-break: break-word; }
         .meta { color: #555; font-size: 11px; }
-        .campo { margin: 4px 0; }
-        .obs { white-space: pre-wrap; margin-top: 10px; }
+        .campo { margin: 4px 0; overflow-wrap: break-word; word-break: break-word; }
+        .obs {
+            white-space: pre-wrap;
+            margin-top: 10px;
+            overflow-wrap: break-word;
+            word-break: break-word;
+            line-height: 1.5;
+        }
+        .map-link { font-size: 11px; }
     </style></head><body>`;
 
     ordenados.forEach(reg => {
@@ -272,6 +369,7 @@ function exportarPDF() {
             <p class="campo"><strong>Local/Instituição:</strong> ${escapeHtml(reg.entryLocation || '—')}</p>
             <p class="campo"><strong>Código:</strong> ${escapeHtml(reg.entryCode || '—')}</p>
             <p class="campo"><strong>Tags:</strong> ${escapeHtml(reg.entryTags || '—')}</p>
+            ${(reg.entryLat && reg.entryLng) ? `<p class="campo map-link"><strong>Coordenadas:</strong> ${reg.entryLat}, ${reg.entryLng}</p>` : ''}
             <p class="obs">${escapeHtml(reg.entryDetails || '')}</p>
         </div>`;
     });
@@ -333,6 +431,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Formulário
     document.getElementById('entryForm').addEventListener('submit', salvarRegistro);
     document.getElementById('deleteEntryBtn').addEventListener('click', excluirRegistro);
+    document.getElementById('getLocationBtn').addEventListener('click', capturarLocalizacao);
     document.getElementById('closeModalBtn').addEventListener('click', fecharModal);
     document.getElementById('cancelModalBtn').addEventListener('click', fecharModal);
 
