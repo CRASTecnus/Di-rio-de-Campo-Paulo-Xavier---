@@ -47,7 +47,7 @@ body {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-bottom: 40px;
+  margin-bottom: 30px;
   padding-bottom: 20px;
   border-bottom: 1px solid rgba(255,255,255,0.1);
 }
@@ -86,7 +86,9 @@ body {
 .tab.active { background-color: rgba(255, 255, 255, 0.1); color: white; font-weight: 500; }
 .tab-count { font-family: var(--font-mono); font-size: 12px; background-color: rgba(255, 255, 255, 0.15); padding: 2px 8px; border-radius: 20px; color: #f1f5f9; }
 
-.sidebar-footer { margin-top: auto; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); }
+.sidebar-footer { margin-top: auto; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); }
+
+.export-actions { display: flex; flex-direction: column; gap: 6px; }
 
 .ghost-btn {
   background: none; border: 1px solid rgba(255,255,255,0.15); color: #cbd5e1;
