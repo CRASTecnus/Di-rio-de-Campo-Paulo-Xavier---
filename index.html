@@ -65,7 +65,7 @@
       
       <label class="ghost-btn" for="importFile" style="text-align: center; display: block; cursor: pointer; margin-top: 8px;">Importar Backup</label>
       <input type="file" id="importFile" accept="application/json" hidden>
-      <p class="local-note">Dados criptografados localmente no dispositivo.</p>
+      <p class="local-note">Dados salvos localmente no dispositivo.</p>
     </div>
   </aside>
 
@@ -97,6 +97,8 @@
     </div>
 
     <input type="hidden" id="entryId">
+    <input type="hidden" id="entryLat">
+    <input type="hidden" id="entryLng">
 
     <div class="field-row">
       <div class="field">
@@ -116,7 +118,10 @@
     <div class="field-row">
       <div class="field">
         <label for="entryLocation">Local / Instituição</label>
-        <input type="text" id="entryLocation" placeholder="Ex.: UBS Centro, Residência...">
+        <div style="display:flex; gap:6px; align-items:center;">
+          <input type="text" id="entryLocation" placeholder="Ex.: UBS Centro, Residência..." style="flex:1;">
+          <button type="button" id="getLocationBtn" class="ghost-btn" title="Usar localização atual (GPS)" style="flex-shrink:0; padding:8px 10px;">📍</button>
+        </div>
       </div>
       <div class="field">
         <label for="entryCode">Código do Caso / Sujeito</label>
