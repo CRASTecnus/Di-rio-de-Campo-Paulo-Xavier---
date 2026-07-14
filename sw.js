@@ -1,5 +1,4 @@
-const CACHE_NAME = 'caderno-psi-v3';
-
+const CACHE_NAME = 'caderno-psi-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -19,9 +18,7 @@ self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) return caches.delete(key);
-        })
+        keys.map((key) => { if (key !== CACHE_NAME) return caches.delete(key); })
       );
     }).then(() => self.clients.claim())
   );
@@ -30,6 +27,6 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   if (!e.request.url.startsWith(self.location.origin)) return;
   e.respondWith(
-    caches.match(e.request).then((cachedResponse) => cachedResponse || fetch(e.request))
+    caches.match(e.request).then((cached) => cached || fetch(e.request))
   );
 });
