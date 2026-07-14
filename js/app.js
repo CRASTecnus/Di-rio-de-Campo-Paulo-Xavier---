@@ -1,309 +1,477 @@
-(() => {
-  "use strict";
+// ==========================================
+// ESTADO DA APLICAÇÃO E CHAVE LOCALSTORAGE
+// ==========================================
+const STORAGE_KEY = 'caderno_campo_registros_px';
+let registros = carregarDados();
+let filtroAtual = 'todos';
+let termoBusca = '';
 
-  const STORAGE_KEY = "px-caderno-de-campo-v1";
+// Elements DOM
+const entryList = document.getElementById('entryList');
+const emptyState = document.getElementById('emptyState');
+const entryForm = document.getElementById('entryForm');
+const modalBackdrop = document.getElementById('modalBackdrop');
+const modalTitle = document.getElementById('modalTitle');
+const searchInput = document.getElementById('searchInput');
+const filterTabs = document.getElementById('filterTabs');
 
-  /** @typedef {{id:string, type:string, date:string, location:string, code:string, summary:string, details:string, tags:string[], status:string, createdAt:string, updatedAt:string}} Entry */
+// Buttons
+const newEntryBtn = document.getElementById('newEntryBtn');
+const emptyNewEntryBtn = document.getElementById('emptyNewEntryBtn');
+const closeModalBtn = document.getElementById('closeModalBtn');
+const cancelModalBtn = document.getElementById('cancelModalBtn');
+const deleteEntryBtn = document.getElementById('deleteEntryBtn');
 
-  /** @type {Entry[]} */
-  let entries = [];
-  let activeFilter = "todos";
-  let searchQuery = "";
+// Export / Import Buttons
+const exportJsonBtn = document.getElementById('exportJsonBtn');
+const exportCsvBtn = document.getElementById('exportCsvBtn');
+const exportWordBtn = document.getElementById('exportWordBtn');
+const exportPdfBtn = document.getElementById('exportPdfBtn');
+const importFile = document.getElementById('importFile');
 
-  const TYPE_LABELS = {
-    visita: "Visita",
-    pesquisa: "Pesquisa",
-    atividade: "Atividade técnica",
-  };
+// ==========================================
+// INICIALIZAÇÃO E EVENTOS
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+  renderizar();
+  atualizarContadores();
 
-  const STATUS_LABELS = {
-    concluido: "Concluído",
-    acompanhamento: "Acompanhamento pendente",
-    planejado: "Planejado",
-  };
+  // Modal Events
+  newEntryBtn.addEventListener('click', () => abrirModal());
+  if (emptyNewEntryBtn) emptyNewEntryBtn.addEventListener('click', () => abrirModal());
+  closeModalBtn.addEventListener('click', fecharModal);
+  cancelModalBtn.addEventListener('click', fecharModal);
+  entryForm.addEventListener('submit', salvarRegistro);
+  deleteEntryBtn.addEventListener('click', deletarRegistro);
 
-  // ---------- Persistence ----------
-  function loadEntries() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      entries = raw ? JSON.parse(raw) : [];
-    } catch (e) {
-      console.error("Falha ao carregar dados salvos:", e);
-      entries = [];
-    }
-  }
+  // Search & Filter Events
+  searchInput.addEventListener('input', (e) => {
+    termoBusca = e.target.value.toLowerCase();
+    renderizar();
+  });
 
-  function saveEntries() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-  }
+  filterTabs.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      filterTabs.querySelector('.tab.active').classList.remove('active');
+      tab.classList.add('active');
+      filtroAtual = tab.dataset.filter;
+      renderizar();
+    });
+  });
 
-  function uid() {
-    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-  }
+  // Export / Import Events
+  exportJsonBtn.addEventListener('click', exportarJSON);
+  exportCsvBtn.addEventListener('click', exportarCSV);
+  exportWordBtn.addEventListener('click', exportarWord);
+  exportPdfBtn.addEventListener('click', exportarPDF);
+  importFile.addEventListener('change', importarBackup);
+});
 
-  // ---------- DOM refs ----------
-  const entryList = document.getElementById("entryList");
-  const emptyState = document.getElementById("emptyState");
-  const filterTabs = document.getElementById("filterTabs");
-  const searchInput = document.getElementById("searchInput");
+// ==========================================
+// PERSISTÊNCIA DE DADOS (LOCALSTORAGE)
+// ==========================================
+function carregarDados() {
+  const dados = localStorage.getItem(STORAGE_KEY);
+  return dados ? JSON.parse(dados) : [];
+}
 
-  const modalBackdrop = document.getElementById("modalBackdrop");
-  const entryForm = document.getElementById("entryForm");
-  const modalTitle = document.getElementById("modalTitle");
-  const deleteEntryBtn = document.getElementById("deleteEntryBtn");
+function salvarDados() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(registros));
+  atualizarContadores();
+}
 
-  const fId = document.getElementById("entryId");
-  const fType = document.getElementById("entryType");
-  const fDate = document.getElementById("entryDate");
-  const fLocation = document.getElementById("entryLocation");
-  const fCode = document.getElementById("entryCode");
-  const fSummary = document.getElementById("entrySummary");
-  const fDetails = document.getElementById("entryDetails");
-  const fTags = document.getElementById("entryTags");
-  const fStatus = document.getElementById("entryStatus");
+// ==========================================
+// RENDERIZAÇÃO DA INTERFACE
+// ==========================================
+function renderizar() {
+  // Filtra os registros com base no tipo selecionado e no termo de busca
+  const registrosFiltrados = registros.filter(reg => {
+    const atendeFiltro = 
+      filtroAtual === 'todos' || 
+      (filtroAtual === 'pendente' && reg.entryStatus === 'acompanhamento') ||
+      reg.entryType === filtroAtual;
 
-  // ---------- Rendering ----------
-  function formatDate(isoDate) {
-    if (!isoDate) return "";
-    const [y, m, d] = isoDate.split("-");
-    return `${d}/${m}/${y}`;
-  }
+    const textoBusca = `
+      ${reg.entryLocation} 
+      ${reg.entryCode} 
+      ${reg.entrySummary} 
+      ${reg.entryDetails} 
+      ${reg.entryTags}
+    `.toLowerCase();
 
-  function matchesFilter(entry) {
-    if (activeFilter === "todos") return true;
-    if (activeFilter === "pendente") return entry.status === "acompanhamento";
-    return entry.type === activeFilter;
-  }
+    const atendeBusca = textoBusca.includes(termoBusca);
 
-  function matchesSearch(entry) {
-    if (!searchQuery) return true;
-    const haystack = [
-      entry.location, entry.code, entry.summary, entry.details,
-      ...(entry.tags || []),
-    ].join(" ").toLowerCase();
-    return haystack.includes(searchQuery.toLowerCase());
-  }
+    return atendeFiltro && atendeBusca;
+  });
 
-  function renderCounts() {
-    document.getElementById("count-todos").textContent = entries.length;
-    document.getElementById("count-visita").textContent = entries.filter(e => e.type === "visita").length;
-    document.getElementById("count-pesquisa").textContent = entries.filter(e => e.type === "pesquisa").length;
-    document.getElementById("count-atividade").textContent = entries.filter(e => e.type === "atividade").length;
-    document.getElementById("count-pendente").textContent = entries.filter(e => e.status === "acompanhamento").length;
-  }
+  // Ordena por data decrescente (mais recentes primeiro)
+  registrosFiltrados.sort((a, b) => new Date(b.entryDate) - new Date(a.entryDate));
 
-  function renderList() {
-    const visible = entries
-      .filter(matchesFilter)
-      .filter(matchesSearch)
-      .sort((a, b) => (b.date || "").localeCompare(a.date || "") || b.createdAt.localeCompare(a.createdAt));
-
-    entryList.innerHTML = "";
-
-    if (visible.length === 0) {
-      emptyState.classList.add("visible");
-    } else {
-      emptyState.classList.remove("visible");
-    }
-
-    for (const entry of visible) {
-      const card = document.createElement("article");
-      card.className = "entry-card";
-      card.dataset.id = entry.id;
-
-      const tagsHtml = (entry.tags || [])
-        .map(t => `<span class="entry-tag">${escapeHtml(t)}</span>`)
-        .join("");
-
-      card.innerHTML = `
-        <span class="stamp ${entry.type}">${escapeHtml(TYPE_LABELS[entry.type] || entry.type)}</span>
-        <div class="entry-date">${formatDate(entry.date)}</div>
-        <h3 class="entry-summary">${escapeHtml(entry.summary)}</h3>
-        <div class="entry-meta">
-          ${entry.location ? `<div><strong>Local:</strong> ${escapeHtml(entry.location)}</div>` : ""}
-          ${entry.code ? `<div><strong>Código:</strong> ${escapeHtml(entry.code)}</div>` : ""}
+  if (registrosFiltrados.length === 0) {
+    entryList.style.display = 'none';
+    emptyState.style.display = 'flex';
+  } else {
+    emptyState.style.display = 'none';
+    entryList.style.display = 'grid';
+    
+    entryList.innerHTML = registrosFiltrados.map(reg => `
+      <div class="entry-card" onclick="abrirModal('${reg.id}')" style="cursor: pointer; border-left: 5px solid ${getCorPorTipo(reg.entryType)};">
+        <div class="entry-card-header">
+          <span class="badge badge-${reg.entryType}">${traduzirTipo(reg.entryType)}</span>
+          <span class="entry-card-date">${formatarData(reg.entryDate)}</span>
         </div>
-        ${tagsHtml ? `<div class="entry-tags">${tagsHtml}</div>` : ""}
-        <span class="status-pill ${entry.status}">${escapeHtml(STATUS_LABELS[entry.status] || entry.status)}</span>
-      `;
-      card.addEventListener("click", () => openModal(entry.id));
-      entryList.appendChild(card);
-    }
-
-    renderCounts();
+        <h3 class="entry-card-title">${reg.entrySummary}</h3>
+        <p class="entry-card-meta">
+          <strong>Local:</strong> ${reg.entryLocation || 'Não especificado'} | 
+          <strong>Caso/Sujeito:</strong> ${reg.entryCode || 'N/A'}
+        </p>
+        <div class="entry-card-preview">${recortarTexto(reg.entryDetails, 140)}</div>
+        ${reg.entryTags ? `
+          <div class="entry-card-tags">
+            ${reg.entryTags.split(',').map(tag => `<span class="tag">#${tag.trim()}</span>`).join('')}
+          </div>
+        ` : ''}
+        <div class="entry-card-status status-${reg.entryStatus}">
+          ${traduzirStatus(reg.entryStatus)}
+        </div>
+      </div>
+    `).join('');
   }
+}
 
-  function escapeHtml(str) {
-    const div = document.createElement("div");
-    div.textContent = str ?? "";
-    return div.innerHTML;
+function atualizarContadores() {
+  const contadores = {
+    todos: registros.length,
+    visita: registros.filter(r => r.entryType === 'visita').length,
+    pesquisa: registros.filter(r => r.entryType === 'pesquisa').length,
+    atividade: registros.filter(r => r.entryType === 'atividade').length,
+    pendente: registros.filter(r => r.entryStatus === 'acompanhamento').length
+  };
+
+  for (const [key, val] of Object.entries(contadores)) {
+    const el = document.getElementById(`count-${key}`);
+    if (el) el.textContent = val;
   }
+}
 
-  // ---------- Modal ----------
-  function openModal(id) {
+// ==========================================
+// OPERAÇÕES DO MODAL (CREATE / UPDATE / DELETE)
+// ==========================================
+function abrirModal(id = null) {
+  modalBackdrop.style.display = 'flex';
+  
+  if (id) {
+    const reg = registros.find(r => r.id === id);
+    if (!reg) return;
+
+    modalTitle.textContent = "Editar registro";
+    document.getElementById('entryId').value = reg.id;
+    document.getElementById('entryType').value = reg.entryType;
+    document.getElementById('entryDate').value = reg.entryDate;
+    document.getElementById('entryLocation').value = reg.entryLocation;
+    document.getElementById('entryCode').value = reg.entryCode;
+    document.getElementById('entrySummary').value = reg.entrySummary;
+    document.getElementById('entryDetails').value = reg.entryDetails;
+    document.getElementById('entryTags').value = reg.entryTags;
+    document.getElementById('entryStatus').value = reg.entryStatus;
+    
+    deleteEntryBtn.style.display = 'inline-block';
+  } else {
+    modalTitle.textContent = "Novo registro";
     entryForm.reset();
-    if (id) {
-      const entry = entries.find(e => e.id === id);
-      if (!entry) return;
-      modalTitle.textContent = "Editar registro";
-      fId.value = entry.id;
-      fType.value = entry.type;
-      fDate.value = entry.date;
-      fLocation.value = entry.location || "";
-      fCode.value = entry.code || "";
-      fSummary.value = entry.summary;
-      fDetails.value = entry.details || "";
-      fTags.value = (entry.tags || []).join(", ");
-      fStatus.value = entry.status;
-      deleteEntryBtn.style.display = "inline-block";
-    } else {
-      modalTitle.textContent = "Novo registro";
-      fId.value = "";
-      fDate.value = new Date().toISOString().slice(0, 10);
-      fStatus.value = "concluido";
-      deleteEntryBtn.style.display = "none";
-    }
-    modalBackdrop.classList.add("open");
-    fSummary.focus();
+    document.getElementById('entryId').value = '';
+    document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
+    deleteEntryBtn.style.display = 'none';
+  }
+}
+
+function fecharModal() {
+  modalBackdrop.style.display = 'none';
+  entryForm.reset();
+}
+
+function salvarRegistro(e) {
+  e.preventDefault();
+
+  const id = document.getElementById('entryId').value;
+  const novoRegistro = {
+    id: id || 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+    entryType: document.getElementById('entryType').value,
+    entryDate: document.getElementById('entryDate').value,
+    entryLocation: document.getElementById('entryLocation').value,
+    entryCode: document.getElementById('entryCode').value,
+    entrySummary: document.getElementById('entrySummary').value,
+    entryDetails: document.getElementById('entryDetails').value,
+    entryTags: document.getElementById('entryTags').value,
+    entryStatus: document.getElementById('entryStatus').value
+  };
+
+  if (id) {
+    const index = registros.findIndex(r => r.id === id);
+    if (index !== -1) registros[index] = novoRegistro;
+  } else {
+    registros.push(novoRegistro);
   }
 
-  function closeModal() {
-    modalBackdrop.classList.remove("open");
+  salvarDados();
+  fecharModal();
+  renderizar();
+}
+
+function deletarRegistro() {
+  const id = document.getElementById('entryId').value;
+  if (!id) return;
+
+  if (confirm("Tem certeza de que deseja excluir permanentemente este registro do diário?")) {
+    registros = registros.filter(r => r.id !== id);
+    salvarDados();
+    fecharModal();
+    renderizar();
   }
+}
 
-  entryForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const id = fId.value || uid();
-    const now = new Date().toISOString();
-    const existing = entries.find(en => en.id === id);
+// ==========================================
+// MÓDULOS DE EXPORTAÇÃO E IMPORTAÇÃO
+// ==========================================
 
-    const entry = {
-      id,
-      type: fType.value,
-      date: fDate.value,
-      location: fLocation.value.trim(),
-      code: fCode.value.trim(),
-      summary: fSummary.value.trim(),
-      details: fDetails.value.trim(),
-      tags: fTags.value.split(",").map(t => t.trim()).filter(Boolean),
-      status: fStatus.value,
-      createdAt: existing ? existing.createdAt : now,
-      updatedAt: now,
-    };
+// 1. Exportação nativa JSON
+function exportarJSON() {
+  if (registros.length === 0) return alert("Nenhum registro para exportar.");
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(registros, null, 2));
+  fazerDownload(dataStr, `caderno_campo_backup_${obterDataISO()}.json`);
+}
 
-    if (existing) {
-      entries = entries.map(en => en.id === id ? entry : en);
-    } else {
-      entries.push(entry);
-    }
+// 2. Exportação nativa CSV
+function exportarCSV() {
+  if (registros.length === 0) return alert("Nenhum registro para exportar.");
+  
+  const colunas = ["Tipo", "Data", "Local", "Caso_Codigo", "Resumo", "Detalhes", "Tags", "Status"];
+  const linhas = registros.map(r => [
+    r.entryType,
+    r.entryDate,
+    `"${(r.entryLocation || '').replace(/"/g, '""')}"`,
+    `"${(r.entryCode || '').replace(/"/g, '""')}"`,
+    `"${r.entrySummary.replace(/"/g, '""')}"`,
+    `"${(r.entryDetails || '').replace(/"/g, '""')}"`,
+    `"${(r.entryTags || '').replace(/"/g, '""')}"`,
+    r.entryStatus
+  ]);
 
-    saveEntries();
-    renderList();
-    closeModal();
+  const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
+    + [colunas.join(","), ...linhas.map(e => e.join(","))].join("\n");
+  
+  fazerDownload(csvContent, `caderno_campo_relatorio_${obterDataISO()}.csv`);
+}
+
+// 3. EXPORTAR PARA WORD (.doc compatível com MS Word)
+function exportarWord() {
+  if (registros.length === 0) return alert("Nenhum registro para exportar.");
+
+  let htmlDoc = `
+  <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+  <head>
+    <meta charset="utf-8">
+    <title>Caderno de Campo - Paulo Xavier</title>
+    <style>
+      body { font-family: 'Arial', sans-serif; color: #2d3748; line-height: 1.6; }
+      h1 { color: #1a365d; font-size: 24pt; border-bottom: 2px solid #2b6cb0; padding-bottom: 8px; margin-bottom: 20px; }
+      .meta-global { margin-bottom: 30px; font-size: 11pt; color: #4a5568; }
+      .registro { margin-bottom: 40px; page-break-inside: avoid; border: 1px solid #e2e8f0; padding: 20px; background-color: #f7fafc; border-radius: 6px; }
+      .reg-header { background-color: #edf2f7; padding: 10px; margin-bottom: 15px; border-radius: 4px; }
+      .reg-meta { font-size: 10pt; color: #4a5568; margin-bottom: 5px; text-transform: uppercase; }
+      .reg-titulo { font-size: 14pt; font-weight: bold; color: #2d3748; margin: 0; }
+      .reg-detalhes { font-size: 11pt; line-height: 1.6; margin-top: 15px; color: #2d3748; }
+      .reg-tags { font-size: 10pt; color: #319795; margin-top: 15px; font-style: italic; }
+    </style>
+  </head>
+  <body>
+    <h1>CADERNO DE CAMPO</h1>
+    <div class="meta-global">
+      <strong>Psicólogo Responsável:</strong> Paulo Xavier<br>
+      <strong>Data de Emissão do Relatório:</strong> ${new Date().toLocaleDateString('pt-BR')}
+    </div>
+    <hr style="border: 1px solid #e2e8f0;" />
+  `;
+
+  // Ordena os registros chronologicamente para o documento do Word
+  const ordenados = [...registros].sort((a,b) => new Date(a.entryDate) - new Date(b.entryDate));
+
+  ordenados.forEach(reg => {
+    htmlDoc += `
+      <div class="registro">
+        <div class="reg-header">
+          <div class="reg-meta">
+            <strong>Tipo:</strong> ${traduzirTipo(reg.entryType)} | 
+            <strong>Data:</strong> ${formatarData(reg.entryDate)} | 
+            <strong>Local:</strong> ${reg.entryLocation || 'Não especificado'} | 
+            <strong>Caso:</strong> ${reg.entryCode || 'N/A'}
+          </div>
+          <div class="reg-titulo">${reg.entrySummary}</div>
+        </div>
+        <div class="reg-detalhes">
+          <strong>Observações e Registros de Campo:</strong><br/>
+          ${(reg.entryDetails || 'Sem observações detalhadas registradas.').replace(/\n/g, '<br/>')}
+        </div>
+        ${reg.entryTags ? `<div class="reg-tags"><strong>Tags de busca:</strong> ${reg.entryTags}</div>` : ''}
+      </div>
+    `;
   });
 
-  deleteEntryBtn.addEventListener("click", () => {
-    const id = fId.value;
-    if (!id) return;
-    if (!confirm("Excluir este registro? Esta ação não pode ser desfeita.")) return;
-    entries = entries.filter(en => en.id !== id);
-    saveEntries();
-    renderList();
-    closeModal();
+  htmlDoc += `</body></html>`;
+
+  const blob = new Blob(['\ufeff' + htmlDoc], { type: 'application/msword' });
+  const url = URL.createObjectURL(blob);
+  
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Caderno_de_Campo_Paulo_Xavier_${obterDataISO()}.doc`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// 4. EXPORTAR PARA PDF (Utiliza a biblioteca externa html2pdf já mapeada)
+function exportarPDF() {
+  if (registros.length === 0) return alert("Nenhum registro para exportar.");
+
+  // Elemento gerador virtual temporário
+  const pdfContainer = document.createElement('div');
+  pdfContainer.style.padding = '30px';
+  pdfContainer.style.fontFamily = 'Helvetica, Arial, sans-serif';
+  pdfContainer.style.color = '#2d3748';
+
+  let htmlPDF = `
+    <div style="border-bottom: 3px solid #2b6cb0; padding-bottom: 12px; margin-bottom: 25px;">
+      <h1 style="color: #1a365d; margin: 0; font-size: 24px; font-weight: bold;">Caderno de Campo</h1>
+      <p style="margin: 6px 0 0 0; color: #4a5568; font-size: 13px; line-height: 1.4;">
+        <strong>Psicólogo:</strong> Paulo Xavier &middot; Registro Profissional<br>
+        <strong>Gerado em:</strong> ${new Date().toLocaleDateString('pt-BR')} &middot; Documento Sigiloso
+      </p>
+    </div>
+  `;
+
+  // Ordena os registros
+  const ordenados = [...registros].sort((a,b) => new Date(a.entryDate) - new Date(b.entryDate));
+
+  ordenados.forEach(reg => {
+    htmlPDF += `
+    <div style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 18px; margin-bottom: 25px; page-break-inside: avoid; background-color: #f7fafc;">
+      <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 10px; font-size: 10px; color: #718096; text-transform: uppercase;">
+        <span><strong>TIPO:</strong> ${traduzirTipo(reg.entryType)}</span>
+        <span><strong>DATA:</strong> ${formatarData(reg.entryDate)}</span>
+        <span><strong>LOCAL:</strong> ${reg.entryLocation || 'N/A'}</span>
+        <span><strong>CÓDIGO:</strong> ${reg.entryCode || 'N/A'}</span>
+      </div>
+      <h3 style="margin: 0 0 10px 0; color: #1a365d; font-size: 15px; font-weight: bold;">${reg.entrySummary}</h3>
+      <div style="font-size: 12px; line-height: 1.6; color: #2d3748; white-space: pre-wrap; margin-top: 10px;">
+        <strong>Relato de Atividade:</strong><br>
+        ${reg.entryDetails || 'Sem observações adicionais cadastrados.'}
+      </div>
+      ${reg.entryTags ? `
+        <div style="margin-top: 12px; font-size: 10px; color: #319795; border-top: 1px dashed #e2e8f0; padding-top: 6px;">
+          <strong>Tags:</strong> ${reg.entryTags.split(',').map(tag => `#${tag.trim()}`).join(' ')}
+        </div>
+      ` : ''}
+    </div>
+    `;
   });
 
-  document.getElementById("closeModalBtn").addEventListener("click", closeModal);
-  document.getElementById("cancelModalBtn").addEventListener("click", closeModal);
-  modalBackdrop.addEventListener("click", (e) => {
-    if (e.target === modalBackdrop) closeModal();
+  pdfContainer.innerHTML = htmlPDF;
+  document.body.appendChild(pdfContainer);
+
+  const configuracoes = {
+    margin:       12,
+    filename:     `Caderno_de_Campo_Paulo_Xavier_${obterDataISO()}.pdf`,
+    image:        { type: 'jpeg', quality: 0.98 },
+    html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
+    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  };
+
+  html2pdf().set(configuracoes).from(pdfContainer).save().then(() => {
+    document.body.removeChild(pdfContainer);
   });
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && modalBackdrop.classList.contains("open")) closeModal();
-  });
+}
 
-  document.getElementById("newEntryBtn").addEventListener("click", () => openModal(null));
-  document.getElementById("emptyNewEntryBtn").addEventListener("click", () => openModal(null));
+// 5. Importação de Backup JSON
+function importarBackup(e) {
+  const file = e.target.files[0];
+  if (!file) return;
 
-  // ---------- Filters & search ----------
-  filterTabs.addEventListener("click", (e) => {
-    const btn = e.target.closest(".tab");
-    if (!btn) return;
-    filterTabs.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-    btn.classList.add("active");
-    activeFilter = btn.dataset.filter;
-    renderList();
-  });
-
-  searchInput.addEventListener("input", (e) => {
-    searchQuery = e.target.value;
-    renderList();
-  });
-
-  // ---------- Export / Import ----------
-  function download(filename, content, mime) {
-    const blob = new Blob([content], { type: mime });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  document.getElementById("exportJsonBtn").addEventListener("click", () => {
-    const stamp = new Date().toISOString().slice(0, 10);
-    download(`caderno-de-campo-backup-${stamp}.json`, JSON.stringify(entries, null, 2), "application/json");
-  });
-
-  document.getElementById("exportCsvBtn").addEventListener("click", () => {
-    const headers = ["data", "tipo", "local", "codigo", "resumo", "detalhes", "tags", "status"];
-    const rows = entries
-      .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
-      .map(en => [
-        en.date, TYPE_LABELS[en.type] || en.type, en.location, en.code,
-        en.summary, en.details, (en.tags || []).join("; "), STATUS_LABELS[en.status] || en.status,
-      ].map(csvEscape).join(","));
-    const csv = [headers.join(","), ...rows].join("\n");
-    const stamp = new Date().toISOString().slice(0, 10);
-    download(`caderno-de-campo-${stamp}.csv`, "\uFEFF" + csv, "text/csv;charset=utf-8");
-  });
-
-  function csvEscape(value) {
-    const str = (value ?? "").toString();
-    if (/[",\n]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
-    return str;
-  }
-
-  document.getElementById("importFile").addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const imported = JSON.parse(reader.result);
-        if (!Array.isArray(imported)) throw new Error("Formato inválido");
-        const existingIds = new Set(entries.map(en => en.id));
-        let added = 0;
-        for (const item of imported) {
-          if (item && item.id && !existingIds.has(item.id)) {
-            entries.push(item);
-            added++;
-          }
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    try {
+      const importados = JSON.parse(evt.target.result);
+      if (Array.isArray(importados)) {
+        if (confirm(`Deseja mesclar estes ${importados.length} registros com os seus atuais? (Registros duplicados por ID serão substituídos)`)) {
+          const mapaAtual = new Map(registros.map(r => [r.id, r]));
+          importados.forEach(reg => mapaAtual.set(reg.id, reg));
+          registros = Array.from(mapaAtual.values());
+          salvarDados();
+          renderizar();
+          alert("Backup importado com sucesso!");
         }
-        saveEntries();
-        renderList();
-        alert(`Importação concluída: ${added} registro(s) adicionado(s).`);
-      } catch (err) {
-        alert("Não foi possível importar o arquivo. Verifique se é um backup JSON válido gerado por este aplicativo.");
+      } else {
+        alert("Erro: O formato do arquivo JSON importado não é válido.");
       }
-      e.target.value = "";
-    };
-    reader.readAsText(file);
-  });
+    } catch (err) {
+      alert("Ocorreu um erro ao processar o arquivo de backup: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
 
-  // ---------- Init ----------
-  loadEntries();
-  renderList();
-})();
+// ==========================================
+// FUNÇÕES AUXILIARES / FORMATADORES
+// ==========================================
+function fazerDownload(href, filename) {
+  const a = document.createElement('a');
+  a.href = href;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function obterDataISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function formatarData(dataStr) {
+  if (!dataStr) return '';
+  const partes = dataStr.split('-');
+  return `${partes[2]}/${partes[1]}/${partes[0]}`;
+}
+
+function traduzirTipo(tipo) {
+  const tipos = {
+    visita: 'Visita',
+    pesquisa: 'Pesquisa',
+    atividade: 'Atividade Técnica'
+  };
+  return tipos[tipo] || tipo;
+}
+
+function traduzirStatus(status) {
+  const statusLabels = {
+    concluido: 'Concluído',
+    acompanhamento: 'Acompanhamento pendente',
+    planejado: 'Planejado'
+  };
+  return statusLabels[status] || status;
+}
+
+function getCorPorTipo(tipo) {
+  const cores = {
+    visita: '#3182ce',    // Azul
+    pesquisa: '#319795',  // Teal/Verde água
+    atividade: '#805ad5' // Roxo
+  };
+  return cores[tipo] || '#718096';
+}
+
+function recortarTexto(texto, limite) {
+  if (!texto) return '';
+  if (texto.length <= limite) return texto;
+  return texto.slice(0, limite) + '...';
+}
