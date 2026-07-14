@@ -3,7 +3,6 @@ let registros = carregarDados();
 let filtroAtual = 'todos';
 let termoBusca = '';
 
-// Elementos DOM
 const entryList = document.getElementById('entryList');
 const emptyState = document.getElementById('emptyState');
 const entryForm = document.getElementById('entryForm');
@@ -12,7 +11,6 @@ const modalTitle = document.getElementById('modalTitle');
 const searchInput = document.getElementById('searchInput');
 const filterTabs = document.getElementById('filterTabs');
 
-// Botões
 const newEntryBtn = document.getElementById('newEntryBtn');
 const emptyNewEntryBtn = document.getElementById('emptyNewEntryBtn');
 const closeModalBtn = document.getElementById('closeModalBtn');
@@ -170,7 +168,6 @@ function deletarRegistro() {
   }
 }
 
-// FORMATADORES EXPORT
 function exportarJSON() {
   if (registros.length === 0) return alert("Nenhum registro.");
   fazerDownload("data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(registros, null, 2)), `backup_${obterDataISO()}.json`);
@@ -195,18 +192,42 @@ function exportarWord() {
 }
 
 function exportarPDF() {
-  if (registros.length === 0) return alert("Nenhum registro.");
+  if (registros.length === 0) return alert("Nenhum registro para exportar.");
   const container = document.createElement('div');
-  container.style.padding = '25px'; container.style.fontFamily = 'Arial, sans-serif';
+  container.style.position = 'absolute';
+  container.style.left = '-9999px';
+  container.style.top = '-9999px';
   
-  let html = `<div style="border-bottom:3px solid #2b6cb0;padding-bottom:10px;margin-bottom:25px;"><h1 style="color:#1a365d;margin:0;font-size:22px;">Caderno de Campo</h1><p style="margin:5px 0 0 0;color:#4a5568;font-size:12px;"><strong>Psicólogo:</strong> Paulo Xavier &middot; Documento Técnico Restrito</p></div>`;
+  let html = `
+    <div style="font-family: Arial, sans-serif; color: #1e293b; background: #ffffff; padding: 20px; width: 100%; box-sizing: border-box;">
+      <div style="border-bottom: 3px solid #6366f1; padding-bottom: 12px; margin-bottom: 30px;">
+        <h1 style="color: #0f172a; margin: 0; font-size: 24px; font-family: Georgia, serif;">Caderno de Campo</h1>
+        <p style="margin: 6px 0 0 0; color: #64748b; font-size: 13px;"><strong>Psicólogo:</strong> Paulo Xavier &middot; Relatório Técnico Restrito</p>
+        <p style="margin: 2px 0 0 0; color: #94a3b8; font-size: 11px;">Gerado em: ${new Date().toLocaleDateString('pt-BR')}</p>
+      </div>
+  `;
   
-  [...registros].sort((a,b)=>new Date(a.entryDate)-new Date(b.entryDate)).forEach(reg => {
-    html += `<div style="border:1px solid #e2e8f0;border-radius:6px;padding:15px;margin-bottom:20px;page-break-inside:avoid;background-color:#f7fafc;"><div style="font-size:10px;color:#718096;margin-bottom:8px;text-transform:uppercase;"><strong>${traduzirTipo(reg.entryType)}</strong> &middot; ${formatarData(reg.entryDate)} &middot; Local: ${reg.entryLocation||'N/A'} &middot; Caso: ${reg.entryCode||'N/A'}</div><h3 style="margin:0 0 10px 0;color:#1a365d;font-size:14px;">${reg.entrySummary}</h3><div style="font-size:12px;line-height:1.5;white-space:pre-wrap;">${reg.entryDetails||''}</div></div>`;
+  [...registros].sort((a, b) => new Date(a.entryDate) - new Date(b.entryDate)).forEach(reg => {
+    html += `
+      <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 24px; page-break-inside: avoid; background-color: #f8fafc;">
+        <div style="font-size: 11px; color: #6366f1; font-weight: bold; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+          ${traduzirTipo(reg.entryType)} &middot; ${formatarData(reg.entryDate)} &middot; Local: ${reg.entryLocation || 'N/A'} &middot; Caso: ${reg.entryCode || 'N/A'}
+        </div>
+        <h3 style="margin: 0 0 12px 0; color: #0f172a; font-size: 16px; font-family: Georgia, serif;">${reg.entrySummary}</h3>
+        <div style="font-size: 13px; line-height: 1.6; color: #334155; white-space: pre-wrap;">${reg.entryDetails || ''}</div>
+        ${reg.entryTags ? `<div style="margin-top: 12px; font-size: 11px; color: #0ea5e9;"><strong>Tags:</strong> ${reg.entryTags.split(',').map(t => '#' + t.trim()).join(' ')}</div>` : ''}
+        <div style="margin-top: 10px; font-size: 11px; color: #64748b; font-style: italic; border-top: 1px dashed #e2e8f0; padding-top: 8px;">Status: ${traduzirStatus(reg.entryStatus)}</div>
+      </div>
+    `;
   });
   
-  container.innerHTML = html; document.body.appendChild(container);
-  html2pdf().set({ margin:12, filename:`Caderno_Campo_Paulo_Xavier_${obterDataISO()}.pdf`, image:{type:'jpeg',quality:0.98}, html2canvas:{scale:2}, jsPDF:{unit:'mm',format:'a4',orientation:'portrait'} }).from(container).save().then(() => document.body.removeChild(container));
+  html += `</div>`; container.innerHTML = html; document.body.appendChild(container);
+
+  html2pdf().set({
+    margin: 15, filename: `Caderno_Campo_Paulo_Xavier_${obterDataISO()}.pdf`, image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true, logging: false, scrollY: 0, scrollX: 0 },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  }).from(container).save().then(() => document.body.removeChild(container)).catch(() => document.body.removeChild(container));
 }
 
 function importarBackup(e) {
@@ -217,8 +238,7 @@ function importarBackup(e) {
       const arr = JSON.parse(evt.target.result);
       if (Array.isArray(arr) && confirm("Mesclar registros de backup?")) {
         const mapa = new Map(registros.map(r => [r.id, r]));
-        arr.forEach(r => mapa.set(r.id, r));
-        registros = Array.from(mapa.values());
+        arr.forEach(r => mapa.set(r.id, r)); registros = Array.from(mapa.values());
         salvarDados(); renderizar();
       }
     } catch(err) { alert("Arquivo inválido."); }
@@ -235,5 +255,5 @@ function obterDataISO() { return new Date().toISOString().slice(0, 10); }
 function formatarData(d) { if(!d)return''; const p=d.split('-'); return `${p[2]}/${p[1]}/${p[0]}`; }
 function traduzirTipo(t) { return {visita:'Visita', pesquisa:'Pesquisa', atividade:'Atividade Técnica'}[t] || t; }
 function traduzirStatus(s) { return {concluido:'Concluído', acompanhamento:'Acompanhamento pendente', planejado:'Planejado'}[s] || s; }
-function getCorPorTipo(t) { return {visita:'#2b6cb0', pesquisa:'#2f855a', atividade:'#b7791f'}[t] || '#718096'; }
+function getCorPorTipo(t) { return {visita:'#38bdf8', pesquisa:'#34d399', atividade:'#fbbf24'}[t] || '#64748b'; }
 function recortarTexto(t, l) { if(!t)return''; return t.length<=l?t:t.slice(0,l)+'...'; }
