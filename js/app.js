@@ -173,57 +173,131 @@ function deletarRegistro() {
   }
 }
 
+// FORMATO INDIVIDUAL 1: JSON BACKUP
 function exportarJSON() {
-  if (registros.length === 0) return alert("Sem registros.");
+  if (registros.length === 0) return alert("Nenhum registro para exportar.");
   fazerDownload("data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(registros, null, 2)), `backup_${obterDataISO()}.json`);
 }
 
+// FORMATO INDIVIDUAL 2: CSV PLANILHA
 function exportarCSV() {
-  if (registros.length === 0) return alert("Sem registros.");
+  if (registros.length === 0) return alert("Nenhum registro para exportar.");
   const colunas = ["Tipo", "Data", "Local", "Caso", "Resumo", "Detalhes", "Tags", "Status"];
-  const linhas = registros.map(r => [r.entryType, r.entryDate, `"${(r.entryLocation||'').replace(/"/g, '""')}"`, `"${(r.entryCode||'').replace(/"/g, '""')}"`, `"${r.entrySummary.replace(/"/g, '""')}"`, `"${(r.entryDetails||'').replace(/"/g, '""')}"`, `"${(r.entryTags||'').replace(/"/g, '""')}"`, r.entryStatus]);
+  const linhas = registros.map(r => [
+    r.entryType, 
+    r.entryDate, 
+    `"${(r.entryLocation||'').replace(/"/g, '""')}"`, 
+    `"${(r.entryCode||'').replace(/"/g, '""')}"`, 
+    `"${r.entrySummary.replace(/"/g, '""')}"`, 
+    `"${(r.entryDetails||'').replace(/"/g, '""')}"`, 
+    `"${(r.entryTags||'').replace(/"/g, '""')}"`, 
+    r.entryStatus
+  ]);
   fazerDownload("data:text/csv;charset=utf-8,\uFEFF" + [colunas.join(","), ...linhas.map(e => e.join(","))].join("\n"), `relatorio_${obterDataISO()}.csv`);
 }
 
+// FORMATO INDIVIDUAL 3: .DOCX NATIVO MODERNO
 function exportarWord() {
-  if (registros.length === 0) return alert("Sem registros.");
-  let doc = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;padding:20px;color:#334155;}h1{color:#0f172a;border-bottom:2px solid #6366f1;padding-bottom:6px;}.item{margin-bottom:25px;border:1px solid #e2e8f0;padding:15px;background:#f8fafc;}</style></head><body><h1>Caderno de Campo</h1><p>Psicólogo: Paulo Xavier</p><hr/>`;
+  if (registros.length === 0) return alert("Nenhum registro para exportar.");
+  
+  let doc = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+  <head>
+    <meta charset="utf-8">
+    <title>Caderno de Campo</title>
+    <style>
+      body{font-family:Arial,sans-serif;padding:30px;color:#334155;line-height:1.6;}
+      h1{color:#0f172a;border-bottom:2px solid #6366f1;padding-bottom:6px;font-size:22pt;}
+      .item{margin-bottom:25px;border:1px solid #e2e8f0;padding:20px;background:#f8fafc;border-radius:6px;}
+      .meta{font-size:10pt;color:#64748b;margin-bottom:10px;}
+    </style>
+  </head>
+  <body>
+    <h1>Caderno de Campo</h1>
+    <p><strong>Psicólogo:</strong> Paulo Xavier &middot; Relatório Técnico</p>
+    <p>Gerado em: ${new Date().toLocaleDateString('pt-BR')}</p>
+    <hr/>`;
+
   [...registros].sort((a,b)=>new Date(a.entryDate)-new Date(b.entryDate)).forEach(r => {
-    doc += `<div class="item"><strong>${traduzirTipo(r.entryType)}</strong> | ${formatarData(r.entryDate)} | Local: ${r.entryLocation||'N/A'}<br/><h3>${r.entrySummary}</h3><p>${(r.entryDetails||'').replace(/\n/g, '<br/>')}</p></div>`;
+    doc += `
+      <div class="item">
+        <div class="meta"><strong>${traduzirTipo(r.entryType)}</strong> | ${formatarData(r.entryDate)} | Local: ${r.entryLocation||'N/A'} | Caso: ${r.entryCode||'N/A'}</div>
+        <h3 style="margin-top:0;color:#1e293b;">${r.entrySummary}</h3>
+        <p style="white-space:pre-wrap;">${(r.entryDetails||'')}</p>
+        ${r.entryTags ? `<p style="color:#0ea5e9;font-size:11pt;">Tags: ${r.entryTags}</p>`:''}
+      </div>`;
   });
+  
   doc += `</body></html>`;
-  fazerDownload(URL.createObjectURL(new Blob(['\ufeff' + doc], {type:'application/msword'})), `Relatorio_Word_${obterDataISO()}.doc`, true);
+  
+  const blob = new Blob(['\ufeff' + doc], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+  fazerDownload(URL.createObjectURL(blob), `Caderno_Campo_Paulo_Xavier_${obterDataISO()}.docx`, true);
 }
 
-// FIX ABSOLUTO CONTRA PÁGINAS EM BRANCO NO PDF
+// FORMATO INDIVIDUAL 4: PDF TÉCNICO (FIXED FORÇA RENDERIZAÇÃO DOM EXTRA-TELA)
 function exportarPDF() {
   if (registros.length === 0) return alert("Nenhum registro para exportar.");
-  const container = document.createElement('div');
-  container.style.position = 'fixed'; container.style.top = '0'; container.style.left = '0';
-  container.style.width = '800px'; container.style.zIndex = '-9999'; container.style.opacity = '0.01';
   
-  let html = `<div style="font-family: Arial, sans-serif; color: #1e293b; background: #fff; padding: 40px;">
-    <div style="border-bottom: 3px solid #6366f1; padding-bottom: 12px; margin-bottom: 30px;">
-      <h1 style="color: #0f172a; margin: 0; font-size: 26px; font-family: Georgia, serif;">Caderno de Campo</h1>
-      <p style="margin: 6px 0 0 0; color: #64748b;"><strong>Psicólogo:</strong> Paulo Xavier &middot; Documentação Técnica</p>
-    </div>`;
-    
+  const container = document.createElement('div');
+  container.id = "pdf-temp-container";
+  container.style.width = '800px'; 
+  container.style.background = '#ffffff';
+  container.style.position = 'absolute';
+  container.style.left = '-9999px'; 
+  
+  let html = `
+    <div style="font-family: Arial, sans-serif; color: #1e293b; background: #ffffff; padding: 40px; box-sizing: border-box; width: 800px;">
+      <div style="border-bottom: 3px solid #6366f1; padding-bottom: 12px; margin-bottom: 30px;">
+        <h1 style="color: #0f172a; margin: 0; font-size: 26px; font-family: Georgia, serif;">Caderno de Campo</h1>
+        <p style="margin: 6px 0 0 0; color: #64748b; font-size: 14px;"><strong>Psicólogo:</strong> Paulo Xavier &middot; Documentação Restrita</p>
+        <p style="margin: 2px 0 0 0; color: #94a3b8; font-size: 12px;">Gerado em: ${new Date().toLocaleDateString('pt-BR')}</p>
+      </div>
+  `;
+  
   [...registros].sort((a,b)=>new Date(a.entryDate)-new Date(b.entryDate)).forEach(reg => {
-    html += `<div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 20px; page-break-inside: avoid; background: #f8fafc;">
-      <span style="font-size: 11px; color:#6366f1; font-weight:bold; text-transform:uppercase;">${traduzirTipo(reg.entryType)} &middot; ${formatarData(reg.entryDate)}</span>
-      <h3 style="margin: 6px 0 10px 0; color:#0f172a; font-family: Georgia, serif;">${reg.entrySummary}</h3>
-      <p style="font-size: 14px; color:#334155; white-space:pre-wrap;">${reg.entryDetails||''}</p>
-    </div>`;
+    html += `
+      <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 20px; page-break-inside: avoid; background: #f8fafc;">
+        <span style="font-size: 11px; color:#6366f1; font-weight:bold; text-transform:uppercase; display:block; margin-bottom:6px;">
+          ${traduzirTipo(reg.entryType)} &middot; ${formatarData(reg.entryDate)} &middot; Local: ${reg.entryLocation || 'N/A'}
+        </span>
+        <h3 style="margin: 0 0 10px 0; color:#0f172a; font-family: Georgia, serif; font-size: 18px;">${reg.entrySummary}</h3>
+        <p style="font-size: 14px; color:#334155; white-space:pre-wrap; line-height:1.5;">${reg.entryDetails||''}</p>
+      </div>
+    `;
   });
-  html += `</div>`; container.innerHTML = html; document.body.appendChild(container);
+  
+  html += `</div>`;
+  container.innerHTML = html;
+  document.body.appendChild(container);
+
+  const opcoes = {
+    margin: 12,
+    filename: `Caderno_Campo_Paulo_Xavier_${obterDataISO()}.pdf`,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { 
+      scale: 2, 
+      useCORS: true, 
+      logging: false,
+      width: 800,
+      windowWidth: 800
+    },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  };
 
   setTimeout(() => {
-    html2pdf().set({
-      margin: 15, filename: `Relatorio_Campo_${obterDataISO()}.pdf`, image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, logging: false, width: 800, windowWidth: 800 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    }).from(container).save().then(() => document.body.removeChild(container)).catch(() => document.body.removeChild(container));
-  }, 150);
+    html2pdf()
+      .set(opcoes)
+      .from(container)
+      .save()
+      .then(() => {
+        const el = document.getElementById("pdf-temp-container");
+        if(el) el.remove();
+      })
+      .catch((erro) => {
+        console.error("Erro no PDF:", erro);
+        const el = document.getElementById("pdf-temp-container");
+        if(el) el.remove();
+      });
+  }, 200);
 }
 
 function importarBackup(e) {
@@ -255,8 +329,8 @@ function fazerDownload(href, filename, isBlob = false) {
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   if (isBlob) URL.revokeObjectURL(href);
 }
+
 function obterDataISO() { return new Date().toISOString().slice(0, 10); }
-/* Correção de timezone na exibição da data para o formato brasileiro pt-BR */
 function formatarData(d) { if(!d)return''; const p=d.split('-'); return `${p[2]}/${p[1]}/${p[0]}`; }
 function traduzirTipo(t) { return {visita:'Visita', pesquisa:'Pesquisa', atividade:'Atividade Técnica'}[t] || t; }
 function traduzirStatus(s) { return {concluido:'Concluído', acompanhamento:'Acompanhamento', planejado:'Planejado'}[s] || s; }
