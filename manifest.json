@@ -1,7 +1,7 @@
 {
   "name": "Caderno de Campo - Paulo Xavier",
   "short_name": "Caderno Psi",
-  "description": "Diário de campo e registros técnicos de psicologia.",
+  "description": "Diário técnico de psicologia e registros de campo.",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#090d16",
