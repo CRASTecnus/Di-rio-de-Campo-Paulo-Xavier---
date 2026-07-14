@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Caderno de Campo · Paulo Xavier</title>
+<meta name="description" content="Caderno de campo para registro de visitas, pesquisas e atividades técnicas.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Sidebar: file tabs -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark">PX</span>
+      <div class="brand-text">
+        <strong>Caderno de Campo</strong>
+        <span>Paulo Xavier · Psicólogo</span>
+      </div>
+    </div>
+
+    <nav class="tabs" id="filterTabs">
+      <button class="tab active" data-filter="todos">
+        <span class="tab-label">Todos os registros</span>
+        <span class="tab-count" id="count-todos">0</span>
+      </button>
+      <button class="tab" data-filter="visita">
+        <span class="tab-label">Visitas</span>
+        <span class="tab-count" id="count-visita">0</span>
+      </button>
+      <button class="tab" data-filter="pesquisa">
+        <span class="tab-label">Pesquisas</span>
+        <span class="tab-count" id="count-pesquisa">0</span>
+      </button>
+      <button class="tab" data-filter="atividade">
+        <span class="tab-label">Atividades técnicas</span>
+        <span class="tab-count" id="count-atividade">0</span>
+      </button>
+      <button class="tab" data-filter="pendente">
+        <span class="tab-label">Acompanhamento pendente</span>
+        <span class="tab-count" id="count-pendente">0</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="ghost-btn" id="exportJsonBtn">Exportar JSON</button>
+      <button class="ghost-btn" id="exportCsvBtn">Exportar CSV</button>
+      <label class="ghost-btn" for="importFile">Importar backup</label>
+      <input type="file" id="importFile" accept="application/json" hidden>
+      <p class="local-note">Os dados ficam salvos apenas neste navegador (localStorage). Exporte um backup regularmente.</p>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main">
+
+    <header class="topbar">
+      <div class="search-wrap">
+        <input type="search" id="searchInput" placeholder="Buscar por local, código do caso, tema, tag…">
+      </div>
+      <button class="primary-btn" id="newEntryBtn">+ Novo registro</button>
+    </header>
+
+    <section class="list-wrap">
+      <div id="emptyState" class="empty-state">
+        <div class="empty-stamp">CAMPO</div>
+        <h2>Nenhum registro ainda</h2>
+        <p>Comece registrando a próxima visita, pesquisa ou atividade técnica.</p>
+        <button class="primary-btn" id="emptyNewEntryBtn">+ Novo registro</button>
+      </div>
+      <div id="entryList" class="entry-list"></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Entry form modal -->
+<div class="modal-backdrop" id="modalBackdrop">
+  <form class="modal" id="entryForm">
+    <div class="modal-head">
+      <h2 id="modalTitle">Novo registro</h2>
+      <button type="button" class="icon-btn" id="closeModalBtn" aria-label="Fechar">×</button>
+    </div>
+
+    <input type="hidden" id="entryId">
+
+    <div class="field-row">
+      <div class="field">
+        <label for="entryType">Tipo de registro</label>
+        <select id="entryType" required>
+          <option value="visita">Visita</option>
+          <option value="pesquisa">Pesquisa</option>
+          <option value="atividade">Atividade técnica</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="entryDate">Data</label>
+        <input type="date" id="entryDate" required>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="entryLocation">Local</label>
+        <input type="text" id="entryLocation" placeholder="Ex.: Residência, escola, UBS, campo de pesquisa…">
+      </div>
+      <div class="field">
+        <label for="entryCode">Código do caso / sujeito</label>
+        <input type="text" id="entryCode" placeholder="Ex.: Caso 014 (evite nomes completos)">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="entrySummary">Resumo</label>
+      <input type="text" id="entrySummary" placeholder="Uma linha descrevendo o registro" required>
+    </div>
+
+    <div class="field">
+      <label for="entryDetails">Observações detalhadas</label>
+      <textarea id="entryDetails" rows="6" placeholder="Descrição da visita, metodologia da pesquisa, procedimento técnico, observações clínicas…"></textarea>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="entryTags">Tags <span class="hint">(separadas por vírgula)</span></label>
+        <input type="text" id="entryTags" placeholder="Ex.: ansiedade, escolar, encaminhamento">
+      </div>
+      <div class="field">
+        <label for="entryStatus">Status</label>
+        <select id="entryStatus">
+          <option value="concluido">Concluído</option>
+          <option value="acompanhamento">Acompanhamento pendente</option>
+          <option value="planejado">Planejado</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="ghost-btn" id="deleteEntryBtn" style="display:none;">Excluir</button>
+      <div class="spacer"></div>
+      <button type="button" class="ghost-btn" id="cancelModalBtn">Cancelar</button>
+      <button type="submit" class="primary-btn">Salvar registro</button>
+    </div>
+  </form>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
