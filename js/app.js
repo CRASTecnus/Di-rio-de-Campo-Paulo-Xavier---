@@ -173,13 +173,13 @@ function deletarRegistro() {
   }
 }
 
-// 1. JSON
+// 1. JSON (Backup)
 function exportarJSON() {
   if (registros.length === 0) return alert("Nenhum registro.");
   fazerDownload("data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(registros, null, 2)), `backup_${obterDataISO()}.json`);
 }
 
-// 2. CSV
+// 2. CSV (Excel)
 function exportarCSV() {
   if (registros.length === 0) return alert("Nenhum registro.");
   const colunas = ["Tipo", "Data", "Local", "Caso", "Resumo", "Detalhes", "Tags", "Status"];
@@ -195,17 +195,17 @@ function exportarCSV() {
   fazerDownload("data:text/csv;charset=utf-8,\uFEFF" + [colunas.join(","), ...linhas.map(e => e.join(","))].join("\n"), `relatorio_${obterDataISO()}.csv`);
 }
 
-// 3. EXPORTAÇÃO UNIVERSAL COMPATÍVEL COM TELEMÓVEIS (WORD)
+// 3. EXPORTAÇÃO COMPATÍVEL COM TELEMÓVEIS (WORD)
 function exportarWord() {
   if (registros.length === 0) return alert("Nenhum registro para exportar.");
   
-  let doc = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+  let conteudoHtml = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
   <head>
     <meta charset="utf-8">
     <title>Caderno de Campo</title>
     <style>
-      body { font-family: 'Arial', sans-serif; padding: 20px; color: #232733; line-height: 1.5; }
-      h1 { color: #0f172a; border-bottom: 2px solid #6366f1; padding-bottom: 6px; font-size: 20pt; }
+      body { font-family: 'Arial', sans-serif; padding: 20px; color: #232733; line-height: 1.6; }
+      h1 { color: #0f172a; border-bottom: 2px solid #6366f1; padding-bottom: 6px; font-size: 22pt; }
       .item { margin-bottom: 25px; border: 1px solid #cbd5e1; padding: 15px; background: #f8fafc; }
       .meta { font-size: 10pt; color: #64748b; margin-bottom: 8px; font-weight: bold; }
       .details { font-size: 11pt; color: #334155; white-space: pre-wrap; }
@@ -218,7 +218,7 @@ function exportarWord() {
     <hr/>`;
 
   [...registros].sort((a,b)=>new Date(a.entryDate)-new Date(b.entryDate)).forEach(r => {
-    doc += `
+    conteudoHtml += `
       <div class="item">
         <div class="meta">${traduzirTipo(r.entryType).toUpperCase()} &middot; ${formatarData(r.entryDate)} &middot; Local: ${r.entryLocation||'N/A'} &middot; Caso: ${r.entryCode||'N/A'}</div>
         <h3 style="margin-top:0; font-size:14pt; color:#1e293b;">${r.entrySummary}</h3>
@@ -227,21 +227,29 @@ function exportarWord() {
       </div>`;
   });
   
-  doc += `</body></html>`;
+  conteudoHtml += `</body></html>`;
   
-  const blob = new Blob([doc], { type: 'application/msword;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
+  // Criação do Blob binário explícito
+  const blob = new Blob(['\ufeff' + conteudoHtml], { type: 'application/msword' });
+  const urlDeDownload = URL.createObjectURL(blob);
   
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `Caderno_Campo_${obterDataISO()}.doc`; 
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // Injeção física do elemento âncora no DOM para aceitação dos sistemas operacionais móveis
+  const linkTemporario = document.createElement('a');
+  linkTemporario.href = urlDeDownload;
+  linkTemporario.download = `Caderno_Campo_${obterDataISO()}.doc`;
+  linkTemporario.style.display = 'none';
+  
+  document.body.appendChild(linkTemporario);
+  linkTemporario.click();
+  
+  // Liberação assíncrona da memória
+  setTimeout(() => {
+    document.body.removeChild(linkTemporario);
+    URL.revokeObjectURL(urlDeDownload);
+  }, 500);
 }
 
-// 4. SOLUÇÃO COMPATÍVEL CONTRA PDF EM BRANCO EM TELEMÓVEIS (IMPRESSÃO WEB NATIVA)
+// 4. IMPRESSÃO WEB NATIVA CONTRA PÁGINAS EM BRANCO NO TELEMÓVEL (PDF)
 function exportarPDF() {
   if (registros.length === 0) return alert("Nenhum registro para exportar.");
 
@@ -337,7 +345,7 @@ function fazerDownload(href, filename) {
 
 function obterDataISO() { return new Date().toISOString().slice(0, 10); }
 function formatarData(d) { if(!d)return''; const p=d.split('-'); return `${p[2]}/${p[1]}/${p[0]}`; }
-function traduzirTipo(t) { return {visita:'Visita', pesquisa:'Pesquisa', activity:'Atividade Técnica', atividade:'Atividade Técnica'}[t] || t; }
+function traduzirTipo(t) { return {visita:'Visita', pesquisa:'Pesquisa', atividade:'Atividade Técnica'}[t] || t; }
 function traduzirStatus(s) { return {concluido:'Concluído', acompanhamento:'Acompanhamento', planejado:'Planejado'}[s] || s; }
 function getCorPorTipo(t) { return {visita:'#38bdf8', pesquisa:'#34d399', atividade:'#fbbf24'}[t] || '#64748b'; }
 function recortarTexto(t, l) { if(!t)return''; return t.length<=l?t:t.slice(0,l)+'...'; }
