@@ -25,7 +25,7 @@
 
 <div class="app">
 
-  <!-- Sidebar: file tabs -->
+  <!-- Sidebar: painel de controle e abas -->
   <aside class="sidebar">
     <div class="brand">
       <div class="brand-mark"></div>
@@ -66,13 +66,13 @@
         <button class="ghost-btn" id="exportPdfBtn" style="color: #f43f5e; font-weight: 600;">Exportar para PDF</button>
       </div>
       
-      <label class="ghost-btn" for="importFile" style="text-align: center; display: block;">Importar backup</label>
+      <label class="ghost-btn" for="importFile" style="text-align: center; display: block; cursor: pointer;">Importar backup</label>
       <input type="file" id="importFile" accept="application/json" hidden>
       <p class="local-note">Os dados ficam salvos apenas neste navegador (localStorage). Exporte um backup regularmente.</p>
     </div>
   </aside>
 
-  <!-- Main content -->
+  <!-- Painel Principal -->
   <main class="main">
     <header class="topbar">
       <div class="search-wrap">
@@ -93,7 +93,7 @@
   </main>
 </div>
 
-<!-- Entry form modal -->
+<!-- Modal de Formulário -->
 <div class="modal-backdrop" id="modalBackdrop">
   <form class="modal" id="entryForm">
     <div class="modal-head">
@@ -163,10 +163,10 @@
   </form>
 </div>
 
-<!-- Biblioteca para geração do PDF -->
+<!-- Biblioteca html2pdf -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
-<!-- Script de Registro do Service Worker para rodar offline e como App -->
+<!-- Script de Instalação e Ciclo Offline (PWA) -->
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
