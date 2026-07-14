@@ -1,19 +1,14 @@
-/* ==========================================================================
-   1. CONFIGURAÇÕES GERAIS E VARIÁVEIS (Paleta Baseada na Psicologia)
-   ========================================================================== */
 :root {
-  --bg-app: #fbfaf7;          /* Fundo sutil, cor de papel antigo/areia */
-  --bg-sidebar: #1e293b;      /* Azul escuro clássico, denota profundidade e ética */
-  --text-main: #2d3748;       /* Grafite para leitura confortável */
+  --bg-app: #fbfaf7;
+  --bg-sidebar: #0f172a;
+  --text-main: #2d3748;
   --text-muted: #718096;
   
-  /* Cores Temáticas das Vertentes/Abordagens */
-  --color-visita: #2b6cb0;     /* Azul Acolhimento (Clínica/Institucional) */
-  --color-pesquisa: #2f855a;   /* Verde Sálvia (Ciência/Investigação) */
-  --color-atividade: #b7791f;  /* Terracota/Ouro Velho (Intervenção Prática) */
-  --color-pendente: #c53030;   /* Alerta sutil para acompanhamento */
+  --color-visita: #2b6cb0;
+  --color-pesquisa: #2f855a;
+  --color-atividade: #b7791f;
+  --color-pendente: #c53030;
   
-  /* Fontes */
   --font-editorial: 'Fraunces', Georgia, serif;
   --font-interface: 'Inter', sans-serif;
   --font-mono: 'IBM Plex Mono', monospace;
@@ -24,11 +19,7 @@
   --transition: all 0.25s ease;
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
   font-family: var(--font-interface);
@@ -39,15 +30,9 @@ body {
   overflow: hidden;
 }
 
-.app {
-  display: flex;
-  height: 100vh;
-  width: 100vw;
-}
+.app { display: flex; height: 100vh; width: 100vw; }
 
-/* ==========================================================================
-   2. SIDEBAR (Identidade e Navegação)
-   ========================================================================== */
+/* SIDEBAR */
 .sidebar {
   width: 300px;
   background-color: var(--bg-sidebar);
@@ -67,32 +52,13 @@ body {
   border-bottom: 1px solid rgba(255,255,255,0.1);
 }
 
-/* Marca inspirada no Símbolo da Psicologia (Psi) */
 .brand-mark {
-  background: linear-gradient(135deg, #4299e1, #2b6cb0);
-  color: white;
+  background: url('../img/icone-psi.svg') no-repeat center center;
+  background-size: contain;
   width: 42px;
   height: 42px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   border-radius: 50%;
-  font-family: var(--font-editorial);
-  font-size: 22px;
-  font-weight: 600;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-  position: relative;
-}
-
-/* Adiciona um elemento estético que lembra o arco do símbolo Psi (Ψ) */
-.brand-mark::after {
-  content: 'Ψ';
-  position: absolute;
-  font-family: var(--font-editorial);
-}
-
-.brand-mark span {
-  display: none; /* Oculta texto PX antigo se houver */
+  box-shadow: 0 0 15px rgba(155, 81, 224, 0.4);
 }
 
 .brand-text strong {
@@ -101,425 +67,111 @@ body {
   font-size: 18px;
   font-weight: 500;
   letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #00f2fe, #ff007f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.brand-text span {
-  font-size: 12px;
-  color: #94a3b8;
-  display: block;
-  margin-top: 2px;
-}
+.brand-text span { font-size: 12px; color: #94a3b8; display: block; margin-top: 2px; }
 
-/* Abas de Filtros */
-.tabs {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex: 1;
-}
+.tabs { display: flex; flex-direction: column; gap: 6px; flex: 1; }
 
 .tab {
-  background: none;
-  border: none;
-  color: #cbd5e1;
-  padding: 12px 16px;
-  text-align: left;
-  font-size: 14px;
-  font-family: var(--font-interface);
-  cursor: pointer;
-  border-radius: var(--border-radius);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  transition: var(--transition);
+  background: none; border: none; color: #cbd5e1; padding: 12px 16px; text-align: left;
+  font-size: 14px; cursor: pointer; border-radius: var(--border-radius);
+  display: flex; justify-content: space-between; align-items: center; transition: var(--transition);
 }
 
-.tab:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: white;
-}
+.tab:hover { background-color: rgba(255, 255, 255, 0.05); color: white; }
+.tab.active { background-color: rgba(255, 255, 255, 0.1); color: white; font-weight: 500; }
+.tab-count { font-family: var(--font-mono); font-size: 12px; background-color: rgba(255, 255, 255, 0.15); padding: 2px 8px; border-radius: 20px; color: #f1f5f9; }
 
-.tab.active {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: white;
-  font-weight: 500;
-}
-
-.tab-count {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  background-color: rgba(255, 255, 255, 0.15);
-  padding: 2px 8px;
-  border-radius: 20px;
-  color: #f1f5f9;
-}
-
-/* Rodapé do Menu Lateral */
-.sidebar-footer {
-  margin-top: auto;
-  padding-top: 20px;
-  border-top: 1px solid rgba(255,255,255,0.1);
-}
+.sidebar-footer { margin-top: auto; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); }
 
 .ghost-btn {
-  background: none;
-  border: 1px solid rgba(255,255,255,0.15);
-  color: #cbd5e1;
-  padding: 10px 14px;
-  font-size: 13px;
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  width: 100%;
-  text-align: left;
-  transition: var(--transition);
+  background: none; border: 1px solid rgba(255,255,255,0.15); color: #cbd5e1;
+  padding: 10px 14px; font-size: 13px; border-radius: var(--border-radius);
+  cursor: pointer; width: 100%; text-align: left; transition: var(--transition);
 }
+.ghost-btn:hover { background-color: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.3); color: white; }
+.local-note { font-size: 11px; color: #94a3b8; margin-top: 12px; line-height: 1.4; font-style: italic; }
 
-.ghost-btn:hover {
-  background-color: rgba(255,255,255,0.08);
-  border-color: rgba(255,255,255,0.3);
-  color: white;
-}
-
-.local-note {
-  font-size: 11px;
-  color: #94a3b8;
-  margin-top: 12px;
-  line-height: 1.4;
-  font-style: italic;
-}
-
-/* ==========================================================================
-   3. PAINEL PRINCIPAL (Topbar e Busca)
-   ========================================================================== */
-.main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
-}
+/* MAIN PANELS */
+.main { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
 .topbar {
-  padding: 24px 40px;
-  background-color: white;
-  border-bottom: 1px solid #e2e8f0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-  box-shadow: var(--shadow-sm);
+  padding: 24px 40px; background-color: white; border-bottom: 1px solid #e2e8f0;
+  display: flex; justify-content: space-between; align-items: center; gap: 20px; box-shadow: var(--shadow-sm);
 }
 
-.search-wrap {
-  flex: 1;
-  max-width: 600px;
-}
+.search-wrap { flex: 1; max-width: 600px; }
 
 #searchInput {
-  width: 100%;
-  padding: 12px 16px;
-  border: 1px solid #cbd5e1;
-  border-radius: var(--border-radius);
-  font-size: 14px;
-  transition: var(--transition);
-  background-color: #f8fafc;
+  width: 100%; padding: 12px 16px; border: 1px solid #cbd5e1; border-radius: var(--border-radius);
+  font-size: 14px; transition: var(--transition); background-color: #f8fafc;
 }
-
-#searchInput:focus {
-  outline: none;
-  border-color: var(--color-visita);
-  background-color: white;
-  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15);
-}
+#searchInput:focus { outline: none; border-color: #9b51e0; background-color: white; box-shadow: 0 0 0 3px rgba(155, 81, 224, 0.15); }
 
 .primary-btn {
-  background: linear-gradient(135deg, #2b6cb0, #1a365d);
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  font-size: 14px;
-  font-weight: 500;
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  transition: var(--transition);
-  box-shadow: 0 2px 5px rgba(26, 54, 93, 0.2);
+  background: linear-gradient(135deg, #00f2fe, #9b51e0, #ff007f); color: white;
+  border: none; padding: 12px 24px; font-size: 14px; font-weight: 600; border-radius: var(--border-radius);
+  cursor: pointer; transition: var(--transition); box-shadow: 0 4px 12px rgba(155, 81, 224, 0.3);
 }
+.primary-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255, 0, 127, 0.4); filter: brightness(1.1); }
 
-.primary-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(26, 54, 93, 0.3);
-}
-
-/* ==========================================================================
-   4. LISTAGEM DE REGISTROS (Cards com pegada de Diário Clínico)
-   ========================================================================== */
-.list-wrap {
-  flex: 1;
-  padding: 40px;
-  overflow-y: auto;
-  background-color: var(--bg-app);
-}
-
-.entry-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 24px;
-}
+/* LIST / CARDS */
+.list-wrap { flex: 1; padding: 40px; overflow-y: auto; background-color: var(--bg-app); }
+.entry-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 24px; }
 
 .entry-card {
-  background-color: white;
-  border: 1px solid #e2e8f0;
-  border-radius: var(--border-radius);
-  padding: 24px;
-  box-shadow: var(--shadow-sm);
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  transition: var(--transition);
+  background-color: white; border: 1px solid #e2e8f0; border-radius: var(--border-radius);
+  padding: 24px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; position: relative; transition: var(--transition); cursor: pointer;
 }
+.entry-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); border-color: #cbd5e1; }
+.entry-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
 
-.entry-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-md);
-  border-color: #cbd5e1;
-}
-
-.entry-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 14px;
-}
-
-/* Badges estruturados */
-.badge {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
+.badge { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
 .badge-visita { background-color: #ebf8ff; color: #2b6cb0; }
 .badge-pesquisa { background-color: #f0fff4; color: #2f855a; }
 .badge-atividade { background-color: #fef3c7; color: #b7791f; }
 
-.entry-card-date {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.entry-card-title {
-  font-family: var(--font-editorial);
-  font-size: 19px;
-  color: var(--text-main);
-  margin-bottom: 8px;
-  line-height: 1.3;
-}
-
-.entry-card-meta {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-bottom: 14px;
-  line-height: 1.4;
-}
-
-.entry-card-preview {
-  font-size: 14px;
-  color: #4a5568;
-  line-height: 1.6;
-  margin-bottom: 16px;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.entry-card-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 16px;
-}
-
-.tag {
-  font-size: 11px;
-  background-color: #f1f5f9;
-  color: #64748b;
-  padding: 2px 8px;
-  border-radius: 4px;
-}
-
-.entry-card-status {
-  font-size: 12px;
-  margin-top: auto;
-  padding-top: 10px;
-  border-top: 1px dashed #e2e8f0;
-  font-style: italic;
-}
+.entry-card-date { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+.entry-card-title { font-family: var(--font-editorial); font-size: 19px; color: var(--text-main); margin-bottom: 8px; line-height: 1.3; }
+.entry-card-meta { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.4; }
+.entry-card-preview { font-size: 14px; color: #4a5568; line-height: 1.6; margin-bottom: 16px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.entry-card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.tag { font-size: 11px; background-color: #f1f5f9; color: #64748b; padding: 2px 8px; border-radius: 4px; }
+.entry-card-status { font-size: 12px; margin-top: auto; padding-top: 10px; border-top: 1px dashed #e2e8f0; font-style: italic; }
 .status-acompanhamento { color: var(--color-pendente); font-weight: 500; }
 .status-concluido { color: var(--text-muted); }
 .status-planejado { color: #3182ce; }
 
-/* ==========================================================================
-   5. EMPTY STATE (Estética Clínica/Escrita)
-   ========================================================================== */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  height: 100%;
-  padding: 40px;
-}
+/* EMPTY STATE */
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; height: 100%; padding: 40px; }
+.empty-stamp { font-family: var(--font-editorial); font-size: 72px; color: #e2e8f0; font-weight: bold; margin-bottom: 16px; user-select: none; }
+.empty-state h2 { font-family: var(--font-editorial); font-size: 24px; color: #4a5568; margin-bottom: 8px; }
+.empty-state p { color: var(--text-muted); font-size: 15px; margin-bottom: 24px; max-width: 320px; }
 
-.empty-stamp {
-  font-family: var(--font-editorial);
-  font-size: 72px;
-  color: #e2e8f0;
-  font-weight: bold;
-  letter-spacing: 4px;
-  margin-bottom: 16px;
-  user-select: none;
-}
-
-.empty-state h2 {
-  font-family: var(--font-editorial);
-  font-size: 24px;
-  color: #4a5568;
-  margin-bottom: 8px;
-}
-
-.empty-state p {
-  color: var(--text-muted);
-  font-size: 15px;
-  margin-bottom: 24px;
-  max-width: 320px;
-}
-
-/* ==========================================================================
-   6. MODAL FORMULÁRIO (Foco e Ergonomia Visual)
-   ========================================================================== */
+/* MODAL FORM */
 .modal-backdrop {
-  position: fixed;
-  top: 0; left: 0; width: 100vw; height: 100vh;
-  background-color: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(4px);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  animation: fadeIn 0.2s ease;
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 1000; animation: fadeIn 0.2s ease;
 }
-
-.modal {
-  background-color: white;
-  width: 100%;
-  max-width: 680px;
-  border-radius: calc(var(--border-radius) * 1.5);
-  box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15);
-  padding: 32px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.modal-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #e2e8f0;
-  padding-bottom: 16px;
-}
-
-.modal-head h2 {
-  font-family: var(--font-editorial);
-  color: var(--bg-sidebar);
-  font-size: 22px;
-}
-
-.icon-btn {
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: var(--transition);
-}
+.modal { background-color: white; width: 100%; max-width: 680px; border-radius: calc(var(--border-radius) * 1.5); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15); padding: 32px; display: flex; flex-direction: column; gap: 20px; max-height: 90vh; overflow-y: auto; }
+.modal-head { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 16px; }
+.modal-head h2 { font-family: var(--font-editorial); color: var(--bg-sidebar); font-size: 22px; }
+.icon-btn { background: none; border: none; font-size: 24px; color: var(--text-muted); cursor: pointer; transition: var(--transition); }
 .icon-btn:hover { color: var(--color-pendente); }
-
-.field-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.field label {
-  font-size: 13px;
-  font-weight: 500;
-  color: #4a5568;
-}
-
-.field input, .field select, .field textarea {
-  padding: 10px 14px;
-  border: 1px solid #cbd5e1;
-  border-radius: var(--border-radius);
-  font-family: var(--font-interface);
-  font-size: 14px;
-  background-color: #f8fafc;
-  transition: var(--transition);
-}
-
-.field textarea {
-  font-family: var(--font-interface);
-  line-height: 1.6;
-}
-
-.field input:focus, .field select:focus, .field textarea:focus {
-  outline: none;
-  border-color: var(--color-visita);
-  background-color: white;
-  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15);
-}
-
-.hint {
-  font-size: 11px;
-  color: var(--text-muted);
-  font-weight: normal;
-}
-
-.modal-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  border-top: 1px solid #e2e8f0;
-  padding-top: 20px;
-  margin-top: 10px;
-}
-
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-size: 13px; font-weight: 500; color: #4a5568; }
+.field input, .field select, .field textarea { padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: var(--border-radius); font-size: 14px; background-color: #f8fafc; transition: var(--transition); }
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: #9b51e0; background-color: white; box-shadow: 0 0 0 3px rgba(155, 81, 224, 0.15); }
+.hint { font-size: 11px; color: var(--text-muted); font-weight: normal; }
+.modal-actions { display: flex; align-items: center; gap: 12px; border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 10px; }
 .spacer { flex: 1; }
-
-.modal-actions .ghost-btn {
-  width: auto;
-  border-color: #cbd5e1;
-  color: #4a5568;
-}
-.modal-actions .ghost-btn:hover { background-color: #f1f5f9; color: var(--text-main); }
+.modal-actions .ghost-btn { width: auto; border-color: #cbd5e1; color: #4a5568; }
 #deleteEntryBtn { border-color: #fed7d7; color: #c53030; }
 #deleteEntryBtn:hover { background-color: #fff5f5; }
 
-/* Animação */
-@keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.98); }
-  to { opacity: 1; transform: scale(1); }
-}
+@keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
