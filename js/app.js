@@ -208,7 +208,7 @@ function exportarWord() {
       h1 { color: #0f172a; border-bottom: 2px solid #6366f1; padding-bottom: 6px; font-size: 22pt; }
       .item { margin-bottom: 25px; border: 1px solid #cbd5e1; padding: 15px; background: #f8fafc; }
       .meta { font-size: 10pt; color: #64748b; margin-bottom: 8px; font-weight: bold; }
-      .details { font-size: 11pt; color: #334155; white-space: pre-wrap; }
+      .details { font-size: 11pt; color: #334155; white-space: pre-wrap; word-break: break-word; }
     </style>
   </head>
   <body>
@@ -229,11 +229,9 @@ function exportarWord() {
   
   conteudoHtml += `</body></html>`;
   
-  // Criação do Blob binário explícito
   const blob = new Blob(['\ufeff' + conteudoHtml], { type: 'application/msword' });
   const urlDeDownload = URL.createObjectURL(blob);
   
-  // Injeção física do elemento âncora no DOM para aceitação dos sistemas operacionais móveis
   const linkTemporario = document.createElement('a');
   linkTemporario.href = urlDeDownload;
   linkTemporario.download = `Caderno_Campo_${obterDataISO()}.doc`;
@@ -242,14 +240,13 @@ function exportarWord() {
   document.body.appendChild(linkTemporario);
   linkTemporario.click();
   
-  // Liberação assíncrona da memória
   setTimeout(() => {
     document.body.removeChild(linkTemporario);
     URL.revokeObjectURL(urlDeDownload);
   }, 500);
 }
 
-// 4. IMPRESSÃO WEB NATIVA CONTRA PÁGINAS EM BRANCO NO TELEMÓVEL (PDF)
+// 4. IMPRESSÃO WEB NATIVA ADAPTADA PARA TEXTOS LONGOS SEM CORTE (PDF)
 function exportarPDF() {
   if (registros.length === 0) return alert("Nenhum registro para exportar.");
 
@@ -269,17 +266,46 @@ function exportarPDF() {
     <head>
       <title>Caderno de Campo - Paulo Xavier</title>
       <style>
-        body { font-family: Arial, sans-serif; color: #1e293b; padding: 20px; background: #fff; line-height: 1.5; }
+        body { font-family: Arial, sans-serif; color: #1e293b; padding: 20px; background: #fff; line-height: 1.6; }
         .header { border-bottom: 3px solid #6366f1; padding-bottom: 10px; margin-bottom: 25px; }
         .title { color: #0f172a; margin: 0; font-size: 24px; font-family: Georgia, serif; }
         .subtitle { margin: 5px 0 0 0; color: #64748b; font-size: 13px; }
-        .card { border: 1px solid #e2e8f0; border-radius: 6px; padding: 16px; margin-bottom: 16px; page-break-inside: avoid; background: #f8fafc; }
+        
+        .card { 
+          border: 1px solid #e2e8f0; 
+          border-radius: 6px; 
+          padding: 16px; 
+          margin-bottom: 16px; 
+          page-break-inside: avoid; 
+          background: #f8fafc;
+          height: auto !important;
+          min-height: min-content;
+        }
         .card-meta { font-size: 11px; color: #6366f1; font-weight: bold; text-transform: uppercase; margin-bottom: 6px; }
         .card-title { margin: 0 0 8px 0; color: #0f172a; font-family: Georgia, serif; font-size: 16px; }
-        .card-text { font-size: 13px; color: #334155; white-space: pre-wrap; }
+        
+        .card-text { 
+          font-size: 13px; 
+          color: #334155; 
+          white-space: pre-wrap; 
+          word-break: break-word;
+          overflow-wrap: anywhere;
+          display: block;
+          width: 100%;
+        }
+        
         @media print {
           body { padding: 0; }
-          .card { background: #ffffff !important; border: 1px solid #cbd5e1 !important; }
+          .card { 
+            background: #ffffff !important; 
+            border: 1px solid #cbd5e1 !important;
+            height: auto !important;
+            page-break-inside: avoid;
+          }
+          .card-text {
+            word-break: break-word !important;
+            overflow-wrap: anywhere !important;
+          }
         }
       </style>
     </head>
