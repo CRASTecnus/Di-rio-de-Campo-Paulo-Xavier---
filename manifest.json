@@ -4,8 +4,8 @@
   "description": "Diário de campo e registros técnicos de psicologia.",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#fbfaf7",
-  "theme_color": "#0f172a",
+  "background_color": "#090d16",
+  "theme_color": "#0f1626",
   "orientation": "portrait-primary",
   "icons": [
     {
