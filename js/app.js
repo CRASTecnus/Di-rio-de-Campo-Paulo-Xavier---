@@ -1,121 +1,115 @@
 /**
- * DIÁRIO DE CAMPO - PAULO XAVIER (CRP-20/09816)
- * Versão Final: Edição, Paginação e Impressão Independente
+ * DIÁRIO DE CAMPO - PAULO XAVIER (Versão Robusta)
+ * Arquitetura Centralizada para máxima estabilidade.
  */
 
 const STORAGE_KEY = 'caderno_campo_registros_px';
-let registros = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-let paginasEdicao = ['']; 
-let paginaAtivaIndex = 0;
-let filtroAtual = 'todos';
-let termoBusca = '';
 
-// --- INICIALIZAÇÃO ---
-document.addEventListener('DOMContentLoaded', () => {
-    renderizar();
-    document.getElementById('newEntryBtn')?.addEventListener('click', () => abrirModal());
-    document.getElementById('entryForm')?.addEventListener('submit', salvarRegistro);
-});
+const App = {
+    state: {
+        registros: JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'),
+        paginas: [''],
+        idx: 0,
+        editId: null
+    },
 
-// --- MOTOR DO CADERNO ---
-function desenharInterfaceCaderno() {
-    let container = document.getElementById('cadernoContainer') || document.createElement('div');
-    container.id = 'cadernoContainer';
-    const details = document.getElementById('entryDetails');
-    if (details) {
-        details.style.display = 'none';
-        details.parentNode.insertBefore(container, details);
+    // --- PERSISTÊNCIA ---
+    save() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state.registros));
+    },
+
+    // --- MOTOR DA UI ---
+    renderList() {
+        const list = document.getElementById('entryList');
+        if (!list) return;
+        list.innerHTML = this.state.registros.map(reg => `
+            <div class="card" onclick="App.openEdit('${reg.id}')" style="cursor:pointer; padding:10px; border:1px solid #ccc; margin:5px 0;">
+                <h3>${reg.entrySummary}</h3>
+            </div>
+        `).join('');
+    },
+
+    renderEditor() {
+        const container = document.getElementById('cadernoContainer');
+        if (!container) return;
+        
+        container.innerHTML = `
+            <div class="editor-box">
+                <textarea id="mainText" style="width:100%; height:300px; font-family:monospace;">${this.state.paginas[this.state.idx]}</textarea>
+            </div>
+            <div class="controls" style="display:flex; justify-content:space-between; margin-top:10px;">
+                <button onclick="App.nav(-1)">← Anterior</button>
+                <span>Pág ${this.state.idx + 1} de ${this.state.paginas.length}</span>
+                <button onclick="App.nav(1)">Próximo →</button>
+                <button onclick="App.addPage()">+ Nova Folha</button>
+                <button onclick="App.printCurrent()" style="background:#ddd;">Imprimir Registro</button>
+            </div>
+        `;
+    },
+
+    // --- AÇÕES ---
+    openEdit(id = null) {
+        if (id) {
+            const reg = this.state.registros.find(r => r.id === id);
+            this.state.editId = id;
+            this.state.paginas = reg.entryDetails.split('[PAGINA_BREAK]');
+            document.getElementById('entrySummary').value = reg.entrySummary;
+        } else {
+            this.state.editId = null;
+            this.state.paginas = [''];
+            document.getElementById('entryForm').reset();
+        }
+        this.state.idx = 0;
+        document.getElementById('modalBackdrop').style.display = 'flex';
+        this.renderEditor();
+    },
+
+    nav(dir) {
+        this.state.paginas[this.state.idx] = document.getElementById('mainText').value;
+        const next = this.state.idx + dir;
+        if (next >= 0 && next < this.state.paginas.length) {
+            this.state.idx = next;
+            this.renderEditor();
+        }
+    },
+
+    addPage() {
+        this.state.paginas[this.state.idx] = document.getElementById('mainText').value;
+        this.state.paginas.push('');
+        this.state.idx = this.state.paginas.length - 1;
+        this.renderEditor();
+    },
+
+    saveRecord() {
+        this.state.paginas[this.state.idx] = document.getElementById('mainText').value;
+        const novo = {
+            id: this.state.editId || 'id_' + Date.now(),
+            entrySummary: document.getElementById('entrySummary').value,
+            entryDetails: this.state.paginas.join('[PAGINA_BREAK]')
+        };
+
+        const i = this.state.registros.findIndex(r => r.id === novo.id);
+        i !== -1 ? this.state.registros[i] = novo : this.state.registros.push(novo);
+        
+        this.save();
+        document.getElementById('modalBackdrop').style.display = 'none';
+        this.renderList();
+    },
+
+    printCurrent() {
+        const pages = this.state.paginas;
+        const html = `<html><body>${pages.map((p, i) => `
+            <div style="page-break-after:always; font-family:sans-serif;">
+                <h3>Página ${i+1}</h3>
+                <p style="white-space:pre-wrap;">${p}</p>
+            </div>`).join('')}</body></html>`;
+        
+        const w = window.open();
+        w.document.write(html);
+        w.document.close();
+        w.print();
     }
-    
-    container.innerHTML = `
-        <div style="background:#fff; border:1px solid #ccc; padding:15px; margin-bottom:10px;">
-            <textarea id="cadernoTextarea" style="width:100%; height:300px; font-family:'Courier New', monospace; font-size:16px;"></textarea>
-        </div>
-        <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
-            <button type="button" onclick="mudarPagina(-1)">Anterior</button>
-            <span id="labelPag">Pág 1</span>
-            <button type="button" onclick="mudarPagina(1)">Seguinte</button>
-            <button type="button" onclick="novaPagina()">+ Nova Folha</button>
-        </div>
-    `;
-    
-    const txt = document.getElementById('cadernoTextarea');
-    txt.value = paginasEdicao[paginaAtivaIndex] || '';
-    txt.oninput = (e) => { paginasEdicao[paginaAtivaIndex] = e.target.value; };
-    document.getElementById('labelPag').textContent = `Página ${paginaAtivaIndex + 1} de ${paginasEdicao.length}`;
-}
+};
 
-function mudarPagina(dir) {
-    if (paginaAtivaIndex + dir >= 0 && paginaAtivaIndex + dir < paginasEdicao.length) {
-        paginaAtivaIndex += dir;
-        desenharInterfaceCaderno();
-    }
-}
-
-function novaPagina() {
-    paginasEdicao.push('');
-    paginaAtivaIndex = paginasEdicao.length - 1;
-    desenharInterfaceCaderno();
-}
-
-// --- MODAL E DADOS ---
-function abrirModal(id = null) {
-    document.getElementById('modalBackdrop').style.display = 'flex';
-    document.getElementById('entryForm').reset();
-    
-    if (id) {
-        const reg = registros.find(r => r.id === id);
-        document.getElementById('entryId').value = reg.id;
-        document.getElementById('entrySummary').value = reg.entrySummary;
-        paginasEdicao = (reg.entryDetails || '').split('[PAGINA_BREAK]');
-    } else {
-        document.getElementById('entryId').value = '';
-        paginasEdicao = [''];
-    }
-    paginaAtivaIndex = 0;
-    desenharInterfaceCaderno();
-}
-
-function salvarRegistro(e) {
-    e.preventDefault();
-    const id = document.getElementById('entryId').value || 'id_' + Date.now();
-    const novo = {
-        id: id,
-        entrySummary: document.getElementById('entrySummary').value,
-        entryDetails: paginasEdicao.join('[PAGINA_BREAK]')
-    };
-    
-    const idx = registros.findIndex(r => r.id === id);
-    if (idx !== -1) registros[idx] = novo; else registros.push(novo);
-    
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(registros));
-    document.getElementById('modalBackdrop').style.display = 'none';
-    renderizar();
-}
-
-// --- IMPRESSÃO INDEPENDENTE (A Chave para o seu pedido) ---
-function imprimirRegistro() {
-    const p = paginasEdicao;
-    const html = `
-        <html><head><style>
-            @page { size: A4; margin: 20mm; }
-            .folha { border: 1px solid #000; padding: 20px; margin-bottom: 20px; page-break-after: always; }
-        </style></head><body>
-            ${p.map((txt, i) => `<div class="folha"><h3>Página ${i+1}</h3><p>${txt.replace(/\n/g, '<br>')}</p></div>`).join('')}
-        </body></html>
-    `;
-    const w = window.open();
-    w.document.write(html);
-    w.document.close();
-    w.print();
-}
-
-function renderizar() {
-    const list = document.getElementById('entryList');
-    if (!list) return;
-    list.innerHTML = registros.map(r => `
-        <div style="border-bottom:1px solid #ccc; padding:10px; cursor:pointer;" onclick="abrirModal('${r.id}')">
-            <strong>${r.entrySummary}</strong>
-        </div>
-    `).join('');
-}
+// Inicialização
+document.addEventListener('DOMContentLoaded', () => App.renderList());
