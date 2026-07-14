@@ -59,11 +59,11 @@
       <div class="export-actions">
         <button class="ghost-btn" id="exportJsonBtn">Exportar JSON</button>
         <button class="ghost-btn" id="exportCsvBtn">Exportar CSV</button>
-        <button class="ghost-btn" id="exportWordBtn" style="color: #6366f1;">Exportar Word</button>
-        <button class="ghost-btn" id="exportPdfBtn" style="color: #ff007f;">Exportar PDF</button>
+        <button class="ghost-btn accent-word" id="exportWordBtn">Exportar Word</button>
+        <button class="ghost-btn accent-pdf" id="exportPdfBtn">Exportar PDF</button>
       </div>
       
-      <label class="ghost-btn" for="importFile" style="text-align: center; display: block; cursor: pointer; margin-top: 8px;">Importar Backup</label>
+      <label class="ghost-btn import-label" for="importFile">Importar Backup</label>
       <input type="file" id="importFile" accept="application/json" hidden>
       <p class="local-note">Dados salvos localmente no dispositivo.</p>
     </div>
@@ -118,9 +118,9 @@
     <div class="field-row">
       <div class="field">
         <label for="entryLocation">Local / Instituição</label>
-        <div style="display:flex; gap:6px; align-items:center;">
-          <input type="text" id="entryLocation" placeholder="Ex.: UBS Centro, Residência..." style="flex:1;">
-          <button type="button" id="getLocationBtn" class="ghost-btn" title="Usar localização atual (GPS)" style="flex-shrink:0; padding:8px 10px;">📍</button>
+        <div class="field-inline">
+          <input type="text" id="entryLocation" placeholder="Ex.: UBS Centro, Residência...">
+          <button type="button" id="getLocationBtn" class="gps-btn" title="Usar localização atual (GPS)">📍</button>
         </div>
       </div>
       <div class="field">
