@@ -1,0 +1,18 @@
+{
+  "name": "Caderno de Campo - Paulo Xavier",
+  "short_name": "Caderno Psi",
+  "description": "Diário de campo e registros técnicos de psicologia.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#fbfaf7",
+  "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "img/icone-psi.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
