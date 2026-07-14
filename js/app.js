@@ -173,19 +173,18 @@ function deletarRegistro() {
   }
 }
 
-// FORMATO INDIVIDUAL 1: JSON BACKUP
+// 1. JSON
 function exportarJSON() {
-  if (registros.length === 0) return alert("Nenhum registro para exportar.");
+  if (registros.length === 0) return alert("Nenhum registro.");
   fazerDownload("data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(registros, null, 2)), `backup_${obterDataISO()}.json`);
 }
 
-// FORMATO INDIVIDUAL 2: CSV PLANILHA
+// 2. CSV
 function exportarCSV() {
-  if (registros.length === 0) return alert("Nenhum registro para exportar.");
+  if (registros.length === 0) return alert("Nenhum registro.");
   const colunas = ["Tipo", "Data", "Local", "Caso", "Resumo", "Detalhes", "Tags", "Status"];
   const linhas = registros.map(r => [
-    r.entryType, 
-    r.entryDate, 
+    r.entryType, r.entryDate, 
     `"${(r.entryLocation||'').replace(/"/g, '""')}"`, 
     `"${(r.entryCode||'').replace(/"/g, '""')}"`, 
     `"${r.entrySummary.replace(/"/g, '""')}"`, 
@@ -196,7 +195,7 @@ function exportarCSV() {
   fazerDownload("data:text/csv;charset=utf-8,\uFEFF" + [colunas.join(","), ...linhas.map(e => e.join(","))].join("\n"), `relatorio_${obterDataISO()}.csv`);
 }
 
-// FORMATO INDIVIDUAL 3: .DOCX NATIVO MODERNO
+// 3. EXPORTAÇÃO UNIVERSAL COMPATÍVEL COM TELEMÓVEIS (WORD)
 function exportarWord() {
   if (registros.length === 0) return alert("Nenhum registro para exportar.");
   
@@ -205,99 +204,106 @@ function exportarWord() {
     <meta charset="utf-8">
     <title>Caderno de Campo</title>
     <style>
-      body{font-family:Arial,sans-serif;padding:30px;color:#334155;line-height:1.6;}
-      h1{color:#0f172a;border-bottom:2px solid #6366f1;padding-bottom:6px;font-size:22pt;}
-      .item{margin-bottom:25px;border:1px solid #e2e8f0;padding:20px;background:#f8fafc;border-radius:6px;}
-      .meta{font-size:10pt;color:#64748b;margin-bottom:10px;}
+      body { font-family: 'Arial', sans-serif; padding: 20px; color: #232733; line-height: 1.5; }
+      h1 { color: #0f172a; border-bottom: 2px solid #6366f1; padding-bottom: 6px; font-size: 20pt; }
+      .item { margin-bottom: 25px; border: 1px solid #cbd5e1; padding: 15px; background: #f8fafc; }
+      .meta { font-size: 10pt; color: #64748b; margin-bottom: 8px; font-weight: bold; }
+      .details { font-size: 11pt; color: #334155; white-space: pre-wrap; }
     </style>
   </head>
   <body>
     <h1>Caderno de Campo</h1>
-    <p><strong>Psicólogo:</strong> Paulo Xavier &middot; Relatório Técnico</p>
-    <p>Gerado em: ${new Date().toLocaleDateString('pt-BR')}</p>
+    <p><strong>Psicólogo:</strong> Paulo Xavier &middot; Relatório Consolidado</p>
+    <p>Data de emissão: ${new Date().toLocaleDateString('pt-BR')}</p>
     <hr/>`;
 
   [...registros].sort((a,b)=>new Date(a.entryDate)-new Date(b.entryDate)).forEach(r => {
     doc += `
       <div class="item">
-        <div class="meta"><strong>${traduzirTipo(r.entryType)}</strong> | ${formatarData(r.entryDate)} | Local: ${r.entryLocation||'N/A'} | Caso: ${r.entryCode||'N/A'}</div>
-        <h3 style="margin-top:0;color:#1e293b;">${r.entrySummary}</h3>
-        <p style="white-space:pre-wrap;">${(r.entryDetails||'')}</p>
-        ${r.entryTags ? `<p style="color:#0ea5e9;font-size:11pt;">Tags: ${r.entryTags}</p>`:''}
+        <div class="meta">${traduzirTipo(r.entryType).toUpperCase()} &middot; ${formatarData(r.entryDate)} &middot; Local: ${r.entryLocation||'N/A'} &middot; Caso: ${r.entryCode||'N/A'}</div>
+        <h3 style="margin-top:0; font-size:14pt; color:#1e293b;">${r.entrySummary}</h3>
+        <div class="details">${(r.entryDetails||'').replace(/\n/g, '<br/>')}</div>
+        ${r.entryTags ? `<p style="color:#0ea5e9; font-size:10pt; margin-top:8px;">Tags: ${r.entryTags}</p>` : ''}
       </div>`;
   });
   
   doc += `</body></html>`;
   
-  const blob = new Blob(['\ufeff' + doc], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-  fazerDownload(URL.createObjectURL(blob), `Caderno_Campo_Paulo_Xavier_${obterDataISO()}.docx`, true);
+  const blob = new Blob([doc], { type: 'application/msword;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Caderno_Campo_${obterDataISO()}.doc`; 
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
-// FORMATO INDIVIDUAL 4: PDF TÉCNICO (FIXED FORÇA RENDERIZAÇÃO DOM EXTRA-TELA)
+// 4. SOLUÇÃO COMPATÍVEL CONTRA PDF EM BRANCO EM TELEMÓVEIS (IMPRESSÃO WEB NATIVA)
 function exportarPDF() {
   if (registros.length === 0) return alert("Nenhum registro para exportar.");
+
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentWindow.document;
   
-  const container = document.createElement('div');
-  container.id = "pdf-temp-container";
-  container.style.width = '800px'; 
-  container.style.background = '#ffffff';
-  container.style.position = 'absolute';
-  container.style.left = '-9999px'; 
-  
-  let html = `
-    <div style="font-family: Arial, sans-serif; color: #1e293b; background: #ffffff; padding: 40px; box-sizing: border-box; width: 800px;">
-      <div style="border-bottom: 3px solid #6366f1; padding-bottom: 12px; margin-bottom: 30px;">
-        <h1 style="color: #0f172a; margin: 0; font-size: 26px; font-family: Georgia, serif;">Caderno de Campo</h1>
-        <p style="margin: 6px 0 0 0; color: #64748b; font-size: 14px;"><strong>Psicólogo:</strong> Paulo Xavier &middot; Documentação Restrita</p>
-        <p style="margin: 2px 0 0 0; color: #94a3b8; font-size: 12px;">Gerado em: ${new Date().toLocaleDateString('pt-BR')}</p>
+  let htmlContudo = `
+    <html>
+    <head>
+      <title>Caderno de Campo - Paulo Xavier</title>
+      <style>
+        body { font-family: Arial, sans-serif; color: #1e293b; padding: 20px; background: #fff; line-height: 1.5; }
+        .header { border-bottom: 3px solid #6366f1; padding-bottom: 10px; margin-bottom: 25px; }
+        .title { color: #0f172a; margin: 0; font-size: 24px; font-family: Georgia, serif; }
+        .subtitle { margin: 5px 0 0 0; color: #64748b; font-size: 13px; }
+        .card { border: 1px solid #e2e8f0; border-radius: 6px; padding: 16px; margin-bottom: 16px; page-break-inside: avoid; background: #f8fafc; }
+        .card-meta { font-size: 11px; color: #6366f1; font-weight: bold; text-transform: uppercase; margin-bottom: 6px; }
+        .card-title { margin: 0 0 8px 0; color: #0f172a; font-family: Georgia, serif; font-size: 16px; }
+        .card-text { font-size: 13px; color: #334155; white-space: pre-wrap; }
+        @media print {
+          body { padding: 0; }
+          .card { background: #ffffff !important; border: 1px solid #cbd5e1 !important; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1 class="title">Caderno de Campo</h1>
+        <p class="subtitle"><strong>Psicólogo:</strong> Paulo Xavier &middot; Relatório Técnico Restrito</p>
+        <p class="subtitle">Gerado em: ${new Date().toLocaleDateString('pt-BR')}</p>
       </div>
   `;
-  
+
   [...registros].sort((a,b)=>new Date(a.entryDate)-new Date(b.entryDate)).forEach(reg => {
-    html += `
-      <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 20px; page-break-inside: avoid; background: #f8fafc;">
-        <span style="font-size: 11px; color:#6366f1; font-weight:bold; text-transform:uppercase; display:block; margin-bottom:6px;">
-          ${traduzirTipo(reg.entryType)} &middot; ${formatarData(reg.entryDate)} &middot; Local: ${reg.entryLocation || 'N/A'}
-        </span>
-        <h3 style="margin: 0 0 10px 0; color:#0f172a; font-family: Georgia, serif; font-size: 18px;">${reg.entrySummary}</h3>
-        <p style="font-size: 14px; color:#334155; white-space:pre-wrap; line-height:1.5;">${reg.entryDetails||''}</p>
+    htmlContudo += `
+      <div class="card">
+        <div class="card-meta">${traduzirTipo(reg.entryType)} &middot; ${formatarData(reg.entryDate)} &middot; Local: ${reg.entryLocation || 'N/A'}</div>
+        <h3 class="card-title">${reg.entrySummary}</h3>
+        <p class="card-text">${reg.entryDetails||''}</p>
       </div>
     `;
   });
-  
-  html += `</div>`;
-  container.innerHTML = html;
-  document.body.appendChild(container);
 
-  const opcoes = {
-    margin: 12,
-    filename: `Caderno_Campo_Paulo_Xavier_${obterDataISO()}.pdf`,
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { 
-      scale: 2, 
-      useCORS: true, 
-      logging: false,
-      width: 800,
-      windowWidth: 800
-    },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-  };
+  htmlContudo += `</body></html>`;
+  
+  doc.open();
+  doc.write(htmlContudo);
+  doc.close();
 
   setTimeout(() => {
-    html2pdf()
-      .set(opcoes)
-      .from(container)
-      .save()
-      .then(() => {
-        const el = document.getElementById("pdf-temp-container");
-        if(el) el.remove();
-      })
-      .catch((erro) => {
-        console.error("Erro no PDF:", erro);
-        const el = document.getElementById("pdf-temp-container");
-        if(el) el.remove();
-      });
-  }, 200);
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+    setTimeout(() => document.body.removeChild(iframe), 1000);
+  }, 250);
 }
 
 function importarBackup(e) {
@@ -319,20 +325,19 @@ function importarBackup(e) {
 function registrarServiceWorker() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js')
-      .then(() => console.log('Offline Engine PWA ativo.'))
+      .then(() => console.log('PWA Ativo.'))
       .catch((err) => console.log('Erro PWA:', err));
   }
 }
 
-function fazerDownload(href, filename, isBlob = false) {
+function fazerDownload(href, filename) {
   const a = document.createElement('a'); a.href = href; a.download = filename;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  if (isBlob) URL.revokeObjectURL(href);
 }
 
 function obterDataISO() { return new Date().toISOString().slice(0, 10); }
 function formatarData(d) { if(!d)return''; const p=d.split('-'); return `${p[2]}/${p[1]}/${p[0]}`; }
-function traduzirTipo(t) { return {visita:'Visita', pesquisa:'Pesquisa', atividade:'Atividade Técnica'}[t] || t; }
+function traduzirTipo(t) { return {visita:'Visita', pesquisa:'Pesquisa', activity:'Atividade Técnica', atividade:'Atividade Técnica'}[t] || t; }
 function traduzirStatus(s) { return {concluido:'Concluído', acompanhamento:'Acompanhamento', planejado:'Planejado'}[s] || s; }
 function getCorPorTipo(t) { return {visita:'#38bdf8', pesquisa:'#34d399', atividade:'#fbbf24'}[t] || '#64748b'; }
 function recortarTexto(t, l) { if(!t)return''; return t.length<=l?t:t.slice(0,l)+'...'; }
