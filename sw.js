@@ -1,4 +1,4 @@
-const CACHE_NAME = 'caderno-psi-v5';
+const CACHE_NAME = 'caderno-psi-v6';
 const ASSETS = [
   './',
   './index.html',
@@ -7,13 +7,11 @@ const ASSETS = [
   './img/icone-psi.svg',
   './manifest.json'
 ];
-
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting())
   );
 });
-
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) => {
@@ -23,7 +21,6 @@ self.addEventListener('activate', (e) => {
     }).then(() => self.clients.claim())
   );
 });
-
 self.addEventListener('fetch', (e) => {
   if (!e.request.url.startsWith(self.location.origin)) return;
   e.respondWith(
