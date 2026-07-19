@@ -27,9 +27,9 @@
   --ribbon-dark: #6e2b26;
 
   /* Tinta por tipo de registro (cores de washi tape / carimbo) */
+  --tipo-atendimento: #a8762f;
   --tipo-visita: #45607d;
-  --tipo-pesquisa: #566b45;
-  --tipo-atividade: #a8762f;
+  --tipo-grupo: #566b45;
   --tipo-pendente: #8f3a34;
 
   /* Tipografia */
@@ -225,9 +225,9 @@ a {
   color: var(--paper-raised);
 }
 
+.tab[data-filter="atendimento"] { border-left-color: var(--tipo-atendimento); }
 .tab[data-filter="visita"]     { border-left-color: var(--tipo-visita); }
-.tab[data-filter="pesquisa"]   { border-left-color: var(--tipo-pesquisa); }
-.tab[data-filter="atividade"]  { border-left-color: var(--tipo-atividade); }
+.tab[data-filter="grupo"]      { border-left-color: var(--tipo-grupo); }
 .tab[data-filter="pendente"]   { border-left-color: var(--tipo-pendente); }
 
 .tab.active {
@@ -292,13 +292,15 @@ a {
   padding: 9px 10px;
   border-radius: 6px;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
 .ghost-btn:hover {
   background: rgba(239, 230, 205, 0.1);
   border-color: var(--brass-soft);
   color: var(--paper-raised);
 }
+.ghost-btn:active { transform: scale(0.97); }
+.ghost-btn:disabled { opacity: 0.45; cursor: wait; }
 .ghost-btn.accent-word:hover { color: #93a9c4; border-color: #45607d; }
 .ghost-btn.accent-pdf:hover  { color: #d19a8f; border-color: var(--ribbon); }
 
@@ -443,6 +445,11 @@ a {
     0 8px 16px rgba(35, 30, 20, 0.12);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   border-bottom: 1px dashed var(--paper-edge);
+  animation: card-in 0.28s ease both;
+}
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 .entry-card:hover {
   transform: translateY(-2px) rotate(-0.3deg);
@@ -471,9 +478,9 @@ a {
   border-radius: 999px;
   color: #fff;
 }
-.entry-type-visita    { background: var(--tipo-visita); }
-.entry-type-pesquisa  { background: var(--tipo-pesquisa); }
-.entry-type-atividade { background: var(--tipo-atividade); }
+.entry-type-atendimento { background: var(--tipo-atendimento); }
+.entry-type-visita      { background: var(--tipo-visita); }
+.entry-type-grupo       { background: var(--tipo-grupo); }
 
 .entry-date {
   font-family: var(--font-mono);
@@ -579,6 +586,7 @@ a {
   padding: 20px;
   z-index: 100;
 }
+.modal-backdrop.open { display: flex; }
 
 .modal {
   width: 100%;
@@ -731,6 +739,38 @@ a {
   background: var(--ink);
 }
 
+/* ============================================================
+   Toast — o "carimbo" de confirmação
+   ============================================================ */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 26px;
+  transform: translate(-50%, 12px);
+  background: var(--ink);
+  color: var(--paper-raised);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+  padding: 12px 20px;
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 200;
+  max-width: min(90vw, 420px);
+  text-align: center;
+}
+.toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+.toast.error {
+  background: var(--ribbon-dark);
+}
+
 /* Foco visível para navegação por teclado */
 :focus-visible {
   outline: 2px solid var(--brass);
@@ -740,4 +780,5 @@ a {
 /* Movimento reduzido */
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
+  .entry-card { animation: none; }
 }
