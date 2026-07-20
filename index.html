@@ -22,7 +22,36 @@
 </head>
 <body>
 
-<div class="app">
+<!-- ============================================================
+     TELA DE LOGIN / CADASTRO
+     Aparece antes do caderno até o usuário entrar com sua conta.
+     Assim os registros ficam vinculados à conta e sincronizam
+     em qualquer aparelho onde o app for aberto/instalado.
+     ============================================================ -->
+<div class="auth-screen" id="authScreen">
+  <form class="auth-card" id="authForm">
+    <div class="brand-mark auth-mark"></div>
+    <h1 id="authTitle">Entrar</h1>
+    <p class="auth-sub">Entre com sua conta para sincronizar seus registros entre todos os seus aparelhos.</p>
+
+    <div class="field">
+      <label for="authEmail">E-mail</label>
+      <input type="email" id="authEmail" required autocomplete="email">
+    </div>
+    <div class="field">
+      <label for="authPassword">Senha</label>
+      <input type="password" id="authPassword" required autocomplete="current-password" minlength="6">
+    </div>
+
+    <p class="auth-error" id="authError"></p>
+
+    <button type="submit" class="primary-btn auth-submit" id="authSubmitBtn">Entrar</button>
+    <button type="button" class="ghost-btn auth-toggle" id="authToggleBtn">Não tenho conta — Criar conta</button>
+    <button type="button" class="auth-link" id="authResetBtn">Esqueci minha senha</button>
+  </form>
+</div>
+
+<div class="app" id="appRoot" style="display:none;">
   <aside class="sidebar">
     <div class="brand">
       <div class="brand-mark"></div>
@@ -56,6 +85,12 @@
     </nav>
 
     <div class="sidebar-footer">
+      <div class="account-row">
+        <span class="account-email" id="userEmailLabel"></span>
+        <button type="button" class="account-logout" id="logoutBtn">Sair</button>
+      </div>
+      <p class="sync-status" id="syncStatus">● Sincronizado</p>
+
       <div class="export-actions">
         <button class="ghost-btn" id="exportJsonBtn" type="button">Exportar JSON</button>
         <button class="ghost-btn" id="exportCsvBtn" type="button">Exportar CSV</button>
@@ -65,7 +100,7 @@
 
       <label class="ghost-btn import-label" for="importFile">Importar Backup</label>
       <input type="file" id="importFile" accept="application/json" hidden>
-      <p class="local-note">Dados salvos localmente no dispositivo.</p>
+      <p class="local-note">Dados sincronizados na sua conta — acessíveis em qualquer aparelho.</p>
     </div>
   </aside>
 
@@ -164,6 +199,12 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- Firebase (Authentication + Firestore) — usados para sincronizar os
+     registros entre todos os dispositivos onde o app for aberto/instalado -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
 
 <!-- Bibliotecas usadas apenas para gerar os arquivos de exportação (Word e PDF) direto no navegador -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
