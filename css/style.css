@@ -29,6 +29,7 @@
   /* Tinta por tipo de registro (cores de washi tape / carimbo) */
   --tipo-atendimento: #a8762f;
   --tipo-visita: #45607d;
+  --tipo-visitatecnica: #6b4e8f;
   --tipo-grupo: #566b45;
   --tipo-pendente: #8f3a34;
 
@@ -223,6 +224,7 @@ a {
 
 .tab[data-filter="atendimento"] { border-left-color: var(--tipo-atendimento); }
 .tab[data-filter="visita"]     { border-left-color: var(--tipo-visita); }
+.tab[data-filter="visitatecnica"] { border-left-color: var(--tipo-visitatecnica); }
 .tab[data-filter="grupo"]      { border-left-color: var(--tipo-grupo); }
 .tab[data-filter="pendente"]   { border-left-color: var(--tipo-pendente); }
 
@@ -475,6 +477,7 @@ a {
 }
 .entry-type-atendimento { background: var(--tipo-atendimento); }
 .entry-type-visita      { background: var(--tipo-visita); }
+.entry-type-visitatecnica { background: var(--tipo-visitatecnica); }
 .entry-type-grupo       { background: var(--tipo-grupo); }
 
 .entry-date {
