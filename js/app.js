@@ -63,7 +63,14 @@ function formatarData(d) {
 const LABELS_TIPO = {
     atendimento: 'Atendimento individual',
     visita: 'Visita domiciliar',
+    visitatecnica: 'Visita técnica',
     grupo: 'Grupo / Oficina'
+};
+const ICONES_TIPO = {
+    atendimento: '🗂️',
+    visita: '🏠',
+    visitatecnica: '🧭',
+    grupo: '👥'
 };
 const LABELS_STATUS = { concluido: 'Concluído', acompanhamento: 'Acompanhamento pendente', planejado: 'Planejado' };
 
@@ -288,6 +295,7 @@ function abrirModal(id = null) {
         document.getElementById('entryLat').value = reg.entryLat ?? '';
         document.getElementById('entryLng').value = reg.entryLng ?? '';
         deleteEntryBtn.style.display = 'inline-block';
+        document.getElementById('printEntryBtn').style.display = 'inline-block';
     } else {
         modalTitle.textContent = 'Novo registro';
         entryForm.reset();
@@ -296,6 +304,7 @@ function abrirModal(id = null) {
         document.getElementById('entryLat').value = '';
         document.getElementById('entryLng').value = '';
         deleteEntryBtn.style.display = 'none';
+        document.getElementById('printEntryBtn').style.display = 'none';
     }
 }
 
@@ -384,7 +393,7 @@ function correspondeAoFiltro(reg) {
 }
 
 function atualizarContadores() {
-    const contagens = { todos: registros.length, atendimento: 0, visita: 0, grupo: 0, pendente: 0 };
+    const contagens = { todos: registros.length, atendimento: 0, visita: 0, visitatecnica: 0, grupo: 0, pendente: 0 };
     registros.forEach(reg => {
         if (contagens[reg.entryType] !== undefined) contagens[reg.entryType]++;
         if (reg.entryStatus === 'acompanhamento') contagens.pendente++;
@@ -416,13 +425,14 @@ function renderizar() {
     entryList.innerHTML = filtrados.map(reg => `
         <div class="entry-card" data-type="${escapeHtml(reg.entryType)}" data-status="${escapeHtml(reg.entryStatus)}" onclick="abrirModal('${reg.id}')">
             <div class="entry-card-head">
-                <span class="entry-type-badge entry-type-${escapeHtml(reg.entryType)}">${escapeHtml(LABELS_TIPO[reg.entryType] || reg.entryType)}</span>
+                <span class="entry-type-badge entry-type-${escapeHtml(reg.entryType)}">${ICONES_TIPO[reg.entryType] || ''} ${escapeHtml(LABELS_TIPO[reg.entryType] || reg.entryType)}</span>
                 <span class="entry-date">${formatarData(reg.entryDate)}</span>
             </div>
             <h3 class="entry-title">${escapeHtml(reg.entrySummary)}</h3>
             <p class="entry-meta">${escapeHtml(reg.entryLocation || '')}${reg.entryCode ? ' · ' + escapeHtml(reg.entryCode) : ''}</p>
             ${(reg.entryLat && reg.entryLng) ? `<a href="https://www.google.com/maps?q=${reg.entryLat},${reg.entryLng}" target="_blank" rel="noopener" class="entry-map-link" onclick="event.stopPropagation()">Ver no mapa ↗</a>` : ''}
             ${reg.entryStatus === 'acompanhamento' ? '<span class="entry-status-flag">Acompanhamento pendente</span>' : ''}
+            <button type="button" class="entry-print-btn" title="Imprimir este registro" onclick="event.stopPropagation(); imprimirRegistro('${reg.id}')">🖨️</button>
         </div>
     `).join('');
 }
@@ -490,6 +500,47 @@ function exportarWord() {
         </body></html>`;
 
     baixarArquivo(html, `caderno-campo-${new Date().toISOString().split('T')[0]}.doc`, 'application/msword');
+}
+
+function imprimirRegistro(id) {
+    const reg = registros.find(r => r.id === id);
+    if (!reg) { alert('Registro não encontrado.'); return; }
+
+    const win = window.open('', '_blank');
+    if (!win) {
+        alert('O navegador bloqueou a janela de impressão. Permita pop-ups para este site e tente novamente.');
+        return;
+    }
+
+    let html = `<html><head><meta charset="utf-8"><title>${escapeHtml(reg.entrySummary || 'Registro')}</title><style>
+        @page { size: A4; margin: 18mm; }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; width: 100%; max-width: 100%; }
+        body { font-family: Arial, sans-serif; padding: 20px; color: #000; overflow-wrap: break-word; word-break: break-word; }
+        .folha { border: 1px solid #000; padding: 16px; width: 100%; max-width: 100%; overflow-wrap: break-word; word-break: break-word; hyphens: auto; }
+        h1 { font-size: 18px; margin: 0 0 10px; overflow-wrap: break-word; }
+        h2 { font-size: 15px; margin: 4px 0; overflow-wrap: break-word; word-break: break-word; }
+        .meta { color: #555; font-size: 11px; }
+        .campo { margin: 4px 0; overflow-wrap: break-word; word-break: break-word; }
+        .obs { white-space: pre-wrap; margin-top: 10px; overflow-wrap: break-word; word-break: break-word; line-height: 1.5; }
+        .map-link { font-size: 11px; }
+    </style></head><body>`;
+
+    html += `<h1>Caderno de Campo — Paulo Xavier</h1>`;
+    html += `<div class="folha">
+        <p class="meta">${formatarData(reg.entryDate)} — ${escapeHtml(LABELS_TIPO[reg.entryType] || reg.entryType)} — ${escapeHtml(LABELS_STATUS[reg.entryStatus] || reg.entryStatus)}</p>
+        <h2>${escapeHtml(reg.entrySummary)}</h2>
+        <p class="campo"><strong>Local/Instituição:</strong> ${escapeHtml(reg.entryLocation || '—')}</p>
+        <p class="campo"><strong>Código:</strong> ${escapeHtml(reg.entryCode || '—')}</p>
+        <p class="campo"><strong>Tags:</strong> ${escapeHtml(reg.entryTags || '—')}</p>
+        ${(reg.entryLat && reg.entryLng) ? `<p class="campo map-link"><strong>Coordenadas:</strong> ${reg.entryLat}, ${reg.entryLng}</p>` : ''}
+        <p class="obs">${escapeHtml(reg.entryDetails || '')}</p>
+    </div>`;
+
+    html += `</body></html>`;
+    win.document.write(html);
+    win.document.close();
+    setTimeout(() => { win.print(); win.close(); }, 500);
 }
 
 function exportarPDF() {
@@ -609,6 +660,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Formulário
     document.getElementById('entryForm').addEventListener('submit', salvarRegistro);
     document.getElementById('deleteEntryBtn').addEventListener('click', excluirRegistro);
+    document.getElementById('printEntryBtn').addEventListener('click', () => {
+        const id = document.getElementById('entryId').value;
+        if (id) imprimirRegistro(id);
+    });
     document.getElementById('getLocationBtn').addEventListener('click', capturarLocalizacao);
     document.getElementById('closeModalBtn').addEventListener('click', fecharModal);
     document.getElementById('cancelModalBtn').addEventListener('click', fecharModal);
