@@ -63,7 +63,6 @@ body {
   color: var(--ink);
 }
 
-/* Barra de rolagem discreta, cor de tinta */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
@@ -117,7 +116,6 @@ a {
     0 20px 50px rgba(0,0,0,0.55);
 }
 
-/* costura de latão ao redor da capa */
 .sidebar::before {
   content: '';
   position: absolute;
@@ -189,9 +187,7 @@ a {
   margin-top: 2px;
 }
 
-/* ---------- Abas de índice (o elemento-assinatura) ----------
-   Cada aba se comporta como um separador colorido real,
-   "espetando" para fora da lombada em direção à página. */
+/* ---------- Abas de índice ---------- */
 
 .tabs {
   display: flex;
@@ -268,7 +264,7 @@ a {
   .tab.active { transform: translateY(4px); box-shadow: 0 -3px 8px rgba(0,0,0,0.3); }
 }
 
-/* ---------- Rodapé da capa: exportar / importar ---------- */
+/* ---------- Rodapé da capa: conta / exportar / importar ---------- */
 
 .sidebar-footer {
   padding-top: 18px;
@@ -343,7 +339,6 @@ a {
     10px 0 0 -4px rgba(239,230,205,0.55);
 }
 
-/* margem vermelha de caderno pautado */
 .main::before {
   content: '';
   position: absolute;
@@ -669,7 +664,6 @@ a {
   letter-spacing: normal;
 }
 
-/* Campos como linhas escritas à mão — sem caixa, só a linha de base */
 .field input,
 .field select,
 .field textarea {
@@ -771,14 +765,140 @@ a {
   background: var(--ribbon-dark);
 }
 
-/* Foco visível para navegação por teclado */
 :focus-visible {
   outline: 2px solid var(--brass);
   outline-offset: 2px;
 }
 
-/* Movimento reduzido */
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
   .entry-card { animation: none; }
 }
+
+/* ============================================================
+   Tela de autenticação (login / cadastro) — mesma linguagem
+   visual do caderno: capa escura + página de papel envelhecido
+   ============================================================ */
+
+.auth-screen {
+  display: flex;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: radial-gradient(ellipse at top, #241d16 0%, #0c0a08 70%);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 360px;
+  background:
+    repeating-linear-gradient(var(--paper-raised) 0px, var(--paper-raised) 27px, var(--paper-line) 28px);
+  background-color: var(--paper-raised);
+  border-radius: 10px;
+  padding: 34px 30px 28px;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.auth-mark {
+  margin-bottom: 14px;
+}
+
+.auth-card h1 {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 24px;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+
+.auth-sub {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 0 0 22px;
+  line-height: 1.5;
+}
+
+.auth-card .field {
+  width: 100%;
+  text-align: left;
+}
+
+.auth-error {
+  min-height: 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ribbon-dark);
+  margin: 4px 0 8px;
+}
+
+.auth-submit {
+  width: 100%;
+  margin-top: 6px;
+}
+
+.auth-toggle {
+  width: 100%;
+  margin-top: 10px;
+  text-align: center;
+}
+
+.auth-link {
+  appearance: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  margin-top: 14px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  text-decoration: underline;
+}
+.auth-link:hover { color: var(--ribbon); }
+
+/* ---------- Conta / status de sincronização (na capa) ---------- */
+
+.account-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.account-email {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(239, 230, 205, 0.6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-logout {
+  appearance: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ribbon);
+  text-decoration: underline;
+  flex-shrink: 0;
+}
+.account-logout:hover { color: #d19a8f; }
+
+.sync-status {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  margin: 0 0 14px;
+}
+.sync-status.sync-ok { color: #7fae74; }
+.sync-status.sync-offline { color: #d1b26a; }
+.sync-status.sync-erro { color: #d19a8f; }
