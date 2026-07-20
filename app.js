@@ -11,17 +11,19 @@
 // Console: https://console.firebase.google.com
 // Projeto > Configurações do projeto > "Seus apps" > Configuração do SDK
 const firebaseConfig = {
-  apiKey: "SUA_API_KEY_AQUI",
-  authDomain: "SEU_PROJETO.firebaseapp.com",
-  projectId: "SEU_PROJETO",
-  storageBucket: "SEU_PROJETO.appspot.com",
-  messagingSenderId: "SEU_SENDER_ID",
-  appId: "SEU_APP_ID"
+  apiKey: "AIzaSyA7poux4vbiIymLOH0x50V7BLGHDAFCIjM",
+  authDomain: "caderno-de-campo-px.firebaseapp.com",
+  projectId: "caderno-de-campo-px",
+  storageBucket: "caderno-de-campo-px.firebasestorage.app",
+  messagingSenderId: "1098711611929",
+  appId: "1:1098711611929:web:27ec24d655943ee0894888",
+  measurementId: "G-2WKZ2GJQ2V"
 };
 
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+try { firebase.analytics(); } catch (e) { /* Analytics é opcional; ignora se bloqueado (ex.: ad-blocker) */ }
 
 // Cache offline: permite abrir/editar registros sem internet.
 // As alterações são enviadas automaticamente quando a conexão volta.
@@ -61,6 +63,7 @@ function formatarData(d) {
 const LABELS_TIPO = {
     atendimento: 'Atendimento individual',
     visita: 'Visita domiciliar',
+    visitatecnica: 'Visita técnica',
     grupo: 'Grupo / Oficina'
 };
 const LABELS_STATUS = { concluido: 'Concluído', acompanhamento: 'Acompanhamento pendente', planejado: 'Planejado' };
@@ -382,7 +385,7 @@ function correspondeAoFiltro(reg) {
 }
 
 function atualizarContadores() {
-    const contagens = { todos: registros.length, atendimento: 0, visita: 0, grupo: 0, pendente: 0 };
+    const contagens = { todos: registros.length, atendimento: 0, visita: 0, visitatecnica: 0, grupo: 0, pendente: 0 };
     registros.forEach(reg => {
         if (contagens[reg.entryType] !== undefined) contagens[reg.entryType]++;
         if (reg.entryStatus === 'acompanhamento') contagens.pendente++;
