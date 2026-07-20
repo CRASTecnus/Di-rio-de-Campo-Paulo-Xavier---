@@ -1,32 +1,45 @@
 // ============================================================
 // CADERNO DE CAMPO - Paulo Xavier
-// app.js — compatível com index.html (ver estrutura de IDs abaixo)
+// app.js — agora com sincronização entre dispositivos via Firebase
+// (Authentication + Cloud Firestore)
 // ============================================================
 
-const STORAGE_KEY = 'caderno_campo_registros_px';
+// --------------------------------------------------------------
+// 1) CONFIGURAÇÃO DO FIREBASE
+// --------------------------------------------------------------
+// Substitua os valores abaixo pelos do SEU projeto Firebase.
+// Console: https://console.firebase.google.com
+// Projeto > Configurações do projeto > "Seus apps" > Configuração do SDK
+const firebaseConfig = {
+  apiKey: "AIzaSyA7poux4vbiIymLOH0x50V7BLGHDAFCIjM",
+  authDomain: "caderno-de-campo-px.firebaseapp.com",
+  projectId: "caderno-de-campo-px",
+  storageBucket: "caderno-de-campo-px.firebasestorage.app",
+  messagingSenderId: "1098711611929",
+  appId: "1:1098711611929:web:27ec24d655943ee0894888",
+  measurementId: "G-2WKZ2GJQ2V"
+};
 
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+try { firebase.analytics(); } catch (e) { /* Analytics é opcional; ignora se bloqueado (ex.: ad-blocker) */ }
+
+// Cache offline: permite abrir/editar registros sem internet.
+// As alterações são enviadas automaticamente quando a conexão volta.
+db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
+  console.warn('Persistência offline não pôde ser ativada:', err.code);
+});
+
+// --------------------------------------------------------------
+// Estado local
+// --------------------------------------------------------------
 let registros = [];
-try {
-    registros = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-} catch (e) {
-    console.error('Não foi possível ler os registros salvos, iniciando lista vazia.', e);
-    registros = [];
-}
-
 let filtroAtual = 'todos';
 let termoBusca = '';
-
-// ------------------------------------------------------------
-// Persistência
-// ------------------------------------------------------------
-function persistir() {
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(registros));
-    } catch (e) {
-        console.error('Erro ao salvar no localStorage:', e);
-        alert('Não foi possível salvar. O armazenamento local pode estar cheio.');
-    }
-}
+let currentUser = null;
+let unsubscribeSnapshot = null;
+let modoAuth = 'entrar'; // 'entrar' | 'cadastro'
 
 function gerarId() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -45,8 +58,151 @@ function formatarData(d) {
     return `${p[2]}/${p[1]}/${p[0]}`;
 }
 
-const LABELS_TIPO = { visita: 'Visita', pesquisa: 'Pesquisa', atividade: 'Atividade técnica' };
+// Corrigido para bater com as opções do formulário e as abas do menu
+// (antes havia "visita/pesquisa/atividade", que não existiam no HTML).
+const LABELS_TIPO = {
+    atendimento: 'Atendimento individual',
+    visita: 'Visita domiciliar',
+    grupo: 'Grupo / Oficina'
+};
 const LABELS_STATUS = { concluido: 'Concluído', acompanhamento: 'Acompanhamento pendente', planejado: 'Planejado' };
+
+// ------------------------------------------------------------
+// Autenticação
+// ------------------------------------------------------------
+function mostrarTelaAuth(mostrar) {
+    document.getElementById('authScreen').style.display = mostrar ? 'flex' : 'none';
+    document.getElementById('appRoot').style.display = mostrar ? 'none' : 'flex';
+}
+
+function traduzirErroAuth(codigo) {
+    const mapa = {
+        'auth/invalid-email': 'E-mail inválido.',
+        'auth/user-disabled': 'Esta conta foi desativada.',
+        'auth/user-not-found': 'Não existe conta com este e-mail. Use "Criar conta".',
+        'auth/wrong-password': 'Senha incorreta.',
+        'auth/invalid-credential': 'E-mail ou senha incorretos.',
+        'auth/email-already-in-use': 'Já existe uma conta com este e-mail. Use "Entrar".',
+        'auth/weak-password': 'A senha precisa ter pelo menos 6 caracteres.',
+        'auth/network-request-failed': 'Falha de conexão. Verifique sua internet.',
+        'auth/too-many-requests': 'Muitas tentativas. Aguarde um momento e tente novamente.',
+    };
+    return mapa[codigo] || 'Não foi possível concluir. Tente novamente.';
+}
+
+function atualizarStatusSync(estado) {
+    const el = document.getElementById('syncStatus');
+    if (!el) return;
+    el.classList.remove('sync-ok', 'sync-erro', 'sync-offline');
+    if (estado === 'sincronizado') {
+        el.classList.add('sync-ok');
+        el.textContent = '● Sincronizado';
+    } else if (estado === 'offline') {
+        el.classList.add('sync-offline');
+        el.textContent = '● Offline — salvando localmente';
+    } else {
+        el.classList.add('sync-erro');
+        el.textContent = '● Erro de sincronização';
+    }
+}
+
+function iniciarSincronizacao(uid) {
+    const colecao = db.collection('usuarios').doc(uid).collection('registros');
+    if (unsubscribeSnapshot) unsubscribeSnapshot();
+    unsubscribeSnapshot = colecao.onSnapshot(
+        (snapshot) => {
+            registros = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderizar();
+            atualizarStatusSync(navigator.onLine ? 'sincronizado' : 'offline');
+        },
+        (err) => {
+            console.error('Erro na sincronização:', err);
+            atualizarStatusSync('erro');
+        }
+    );
+}
+
+function pararSincronizacao() {
+    if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+    registros = [];
+}
+
+auth.onAuthStateChanged((user) => {
+    currentUser = user;
+    if (user) {
+        mostrarTelaAuth(false);
+        document.getElementById('userEmailLabel').textContent = user.email || '';
+        iniciarSincronizacao(user.uid);
+    } else {
+        pararSincronizacao();
+        mostrarTelaAuth(true);
+        renderizar();
+    }
+});
+
+window.addEventListener('online', () => atualizarStatusSync('sincronizado'));
+window.addEventListener('offline', () => atualizarStatusSync('offline'));
+
+function configurarFormAuth() {
+    const form = document.getElementById('authForm');
+    const erroEl = document.getElementById('authError');
+    const submitBtn = document.getElementById('authSubmitBtn');
+    const toggleBtn = document.getElementById('authToggleBtn');
+    const tituloEl = document.getElementById('authTitle');
+
+    function atualizarModo() {
+        erroEl.textContent = '';
+        if (modoAuth === 'cadastro') {
+            tituloEl.textContent = 'Criar conta';
+            submitBtn.textContent = 'Criar conta';
+            toggleBtn.textContent = 'Já tenho conta — Entrar';
+        } else {
+            tituloEl.textContent = 'Entrar';
+            submitBtn.textContent = 'Entrar';
+            toggleBtn.textContent = 'Não tenho conta — Criar conta';
+        }
+    }
+    atualizarModo();
+
+    toggleBtn.addEventListener('click', () => {
+        modoAuth = modoAuth === 'cadastro' ? 'entrar' : 'cadastro';
+        atualizarModo();
+    });
+
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        erroEl.textContent = '';
+        const email = document.getElementById('authEmail').value.trim();
+        const senha = document.getElementById('authPassword').value;
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Aguarde…';
+
+        const acao = modoAuth === 'cadastro'
+            ? auth.createUserWithEmailAndPassword(email, senha)
+            : auth.signInWithEmailAndPassword(email, senha);
+
+        acao
+            .catch((err) => { erroEl.textContent = traduzirErroAuth(err.code); })
+            .finally(() => {
+                submitBtn.disabled = false;
+                atualizarModo();
+            });
+    });
+
+    document.getElementById('authResetBtn').addEventListener('click', () => {
+        const email = document.getElementById('authEmail').value.trim();
+        if (!email) { erroEl.textContent = 'Digite seu e-mail acima para receber o link de redefinição.'; return; }
+        auth.sendPasswordResetEmail(email)
+            .then(() => { erroEl.textContent = ''; alert('Enviamos um link de redefinição de senha para ' + email + '.'); })
+            .catch((err) => { erroEl.textContent = traduzirErroAuth(err.code); });
+    });
+}
+
+function sair() {
+    if (!confirm('Sair da conta neste aparelho?')) return;
+    auth.signOut();
+}
 
 // ------------------------------------------------------------
 // Geolocalização
@@ -149,16 +305,16 @@ function fecharModal() {
 }
 
 // ------------------------------------------------------------
-// Salvar / Excluir
+// Salvar / Excluir (agora gravam direto no Firestore)
 // ------------------------------------------------------------
 function salvarRegistro(e) {
     e.preventDefault();
+    if (!currentUser) return;
 
     const idAtual = document.getElementById('entryId').value;
     const id = idAtual || gerarId();
 
     const reg = {
-        id,
         entryType: document.getElementById('entryType').value,
         entryDate: document.getElementById('entryDate').value,
         entryLocation: document.getElementById('entryLocation').value.trim(),
@@ -169,25 +325,53 @@ function salvarRegistro(e) {
         entryStatus: document.getElementById('entryStatus').value,
         entryLat: document.getElementById('entryLat').value ? parseFloat(document.getElementById('entryLat').value) : null,
         entryLng: document.getElementById('entryLng').value ? parseFloat(document.getElementById('entryLng').value) : null,
+        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
     };
 
-    const idx = registros.findIndex(r => r.id === id);
-    if (idx >= 0) registros[idx] = reg; else registros.push(reg);
+    const submitBtn = document.querySelector('#entryForm button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
 
-    persistir();
-    fecharModal();
-    renderizar();
+    db.collection('usuarios').doc(currentUser.uid).collection('registros').doc(id).set(reg, { merge: true })
+        .then(() => {
+            fecharModal();
+            mostrarToast('Registro salvo e sincronizado.');
+        })
+        .catch((err) => {
+            console.error(err);
+            alert('Não foi possível salvar agora. Se estiver offline, o registro será enviado assim que a conexão voltar.');
+            fecharModal();
+        })
+        .finally(() => { if (submitBtn) submitBtn.disabled = false; });
 }
 
 function excluirRegistro() {
+    if (!currentUser) return;
     const id = document.getElementById('entryId').value;
     if (!id) return;
     if (!confirm('Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita.')) return;
 
-    registros = registros.filter(r => r.id !== id);
-    persistir();
-    fecharModal();
-    renderizar();
+    db.collection('usuarios').doc(currentUser.uid).collection('registros').doc(id).delete()
+        .then(() => {
+            fecharModal();
+            mostrarToast('Registro excluído.');
+        })
+        .catch((err) => {
+            console.error(err);
+            alert('Não foi possível excluir agora: ' + err.message);
+        });
+}
+
+// ------------------------------------------------------------
+// Toast simples
+// ------------------------------------------------------------
+function mostrarToast(msg, erro = false) {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    toast.textContent = msg;
+    toast.classList.toggle('error', erro);
+    toast.classList.add('show');
+    clearTimeout(mostrarToast._t);
+    mostrarToast._t = setTimeout(() => toast.classList.remove('show'), 2600);
 }
 
 // ------------------------------------------------------------
@@ -200,7 +384,7 @@ function correspondeAoFiltro(reg) {
 }
 
 function atualizarContadores() {
-    const contagens = { todos: registros.length, visita: 0, pesquisa: 0, atividade: 0, pendente: 0 };
+    const contagens = { todos: registros.length, atendimento: 0, visita: 0, grupo: 0, pendente: 0 };
     registros.forEach(reg => {
         if (contagens[reg.entryType] !== undefined) contagens[reg.entryType]++;
         if (reg.entryStatus === 'acompanhamento') contagens.pendente++;
@@ -244,7 +428,7 @@ function renderizar() {
 }
 
 // ------------------------------------------------------------
-// Exportações
+// Exportações (continuam operando sobre os dados já sincronizados)
 // ------------------------------------------------------------
 function baixarArquivo(conteudo, nomeArquivo, mimeType) {
     const blob = new Blob([conteudo], { type: mimeType });
@@ -322,43 +506,15 @@ function exportarPDF() {
     let html = `<html><head><meta charset="utf-8"><style>
         @page { size: A4; margin: 18mm; }
         * { box-sizing: border-box; }
-        html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            max-width: 100%;
-        }
-        body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-            color: #000;
-            overflow-wrap: break-word;
-            word-break: break-word;
-        }
-        .folha {
-            border: 1px solid #000;
-            padding: 16px;
-            margin-bottom: 20px;
-            width: 100%;
-            max-width: 100%;
-            page-break-after: always;
-            page-break-inside: avoid;
-            overflow-wrap: break-word;
-            word-break: break-word;
-            hyphens: auto;
-        }
+        html, body { margin: 0; padding: 0; width: 100%; max-width: 100%; }
+        body { font-family: Arial, sans-serif; padding: 20px; color: #000; overflow-wrap: break-word; word-break: break-word; }
+        .folha { border: 1px solid #000; padding: 16px; margin-bottom: 20px; width: 100%; max-width: 100%; page-break-after: always; page-break-inside: avoid; overflow-wrap: break-word; word-break: break-word; hyphens: auto; }
         .folha:last-child { page-break-after: auto; }
         h1 { font-size: 18px; overflow-wrap: break-word; }
         h2 { font-size: 15px; margin: 4px 0; overflow-wrap: break-word; word-break: break-word; }
         .meta { color: #555; font-size: 11px; }
         .campo { margin: 4px 0; overflow-wrap: break-word; word-break: break-word; }
-        .obs {
-            white-space: pre-wrap;
-            margin-top: 10px;
-            overflow-wrap: break-word;
-            word-break: break-word;
-            line-height: 1.5;
-        }
+        .obs { white-space: pre-wrap; margin-top: 10px; overflow-wrap: break-word; word-break: break-word; line-height: 1.5; }
         .map-link { font-size: 11px; }
     </style></head><body>`;
 
@@ -381,10 +537,10 @@ function exportarPDF() {
 }
 
 // ------------------------------------------------------------
-// Importar backup (JSON)
+// Importar backup (JSON) — agora envia para o Firestore em lote
 // ------------------------------------------------------------
 function importarBackup(file) {
-    if (!file) return;
+    if (!file || !currentUser) return;
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -400,23 +556,42 @@ function importarBackup(file) {
             return;
         }
 
-        const substituir = confirm(
-            `Encontrados ${dados.length} registro(s) no backup.\n\nClique "OK" para MESCLAR com os registros atuais (mantendo os já existentes).\nClique "Cancelar" para SUBSTITUIR todos os registros atuais por este backup.`
+        const substituirTudo = !confirm(
+            `Encontrados ${dados.length} registro(s) no backup.\n\nClique "OK" para MESCLAR com os registros já sincronizados.\nClique "Cancelar" para SUBSTITUIR todos os registros atuais por este backup.`
         );
+        // (confirm invertido: OK -> mesclar (não substitui), Cancelar -> substitui)
+        const substituir = substituirTudo;
 
-        if (substituir) {
-            dados.forEach(reg => {
-                if (!reg || !reg.id) reg = { ...reg, id: gerarId() };
-                const idx = registros.findIndex(r => r.id === reg.id);
-                if (idx >= 0) registros[idx] = reg; else registros.push(reg);
+        const colecao = db.collection('usuarios').doc(currentUser.uid).collection('registros');
+
+        const executarImportacao = async () => {
+            if (substituir) {
+                const existentes = await colecao.get();
+                const batchDel = db.batch();
+                existentes.forEach(doc => batchDel.delete(doc.ref));
+                await batchDel.commit();
+            }
+
+            const lotes = [];
+            let batchAtual = db.batch();
+            let contador = 0;
+            dados.forEach((reg) => {
+                const id = (reg && reg.id) || gerarId();
+                const { id: _omit, ...dadosSemId } = reg || {};
+                batchAtual.set(colecao.doc(id), dadosSemId, { merge: true });
+                contador++;
+                if (contador % 400 === 0) { lotes.push(batchAtual); batchAtual = db.batch(); }
             });
-        } else {
-            registros = dados.map(reg => (reg && reg.id) ? reg : { ...reg, id: gerarId() });
-        }
+            lotes.push(batchAtual);
+            for (const lote of lotes) { await lote.commit(); }
+        };
 
-        persistir();
-        renderizar();
-        alert('Backup importado com sucesso.');
+        executarImportacao()
+            .then(() => alert('Backup importado e sincronizado com sucesso.'))
+            .catch((err) => {
+                console.error(err);
+                alert('Ocorreu um erro ao importar o backup: ' + err.message);
+            });
     };
     reader.onerror = () => alert('Não foi possível ler o arquivo selecionado.');
     reader.readAsText(file);
@@ -426,7 +601,10 @@ function importarBackup(file) {
 // Inicialização de eventos
 // ------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
+    configurarFormAuth();
     renderizar();
+
+    document.getElementById('logoutBtn').addEventListener('click', sair);
 
     // Formulário
     document.getElementById('entryForm').addEventListener('submit', salvarRegistro);
@@ -435,7 +613,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('closeModalBtn').addEventListener('click', fecharModal);
     document.getElementById('cancelModalBtn').addEventListener('click', fecharModal);
 
-    // Fecha ao clicar fora do modal
     document.getElementById('modalBackdrop').addEventListener('click', (e) => {
         if (e.target.id === 'modalBackdrop') fecharModal();
     });
@@ -443,17 +620,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Escape') fecharModal();
     });
 
-    // Novo registro
     document.getElementById('newEntryBtn').addEventListener('click', () => abrirModal());
     document.getElementById('emptyNewEntryBtn').addEventListener('click', () => abrirModal());
 
-    // Busca
     document.getElementById('searchInput').addEventListener('input', (e) => {
         termoBusca = e.target.value;
         renderizar();
     });
 
-    // Abas de filtro
     document.querySelectorAll('#filterTabs .tab').forEach(tab => {
         tab.addEventListener('click', () => {
             document.querySelectorAll('#filterTabs .tab').forEach(t => t.classList.remove('active'));
@@ -463,15 +637,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Exportações
     document.getElementById('exportJsonBtn').addEventListener('click', exportarJSON);
     document.getElementById('exportCsvBtn').addEventListener('click', exportarCSV);
     document.getElementById('exportWordBtn').addEventListener('click', exportarWord);
     document.getElementById('exportPdfBtn').addEventListener('click', exportarPDF);
 
-    // Importar backup
     document.getElementById('importFile').addEventListener('change', (e) => {
         importarBackup(e.target.files[0]);
-        e.target.value = ''; // permite importar o mesmo arquivo de novo depois
+        e.target.value = '';
     });
 });
